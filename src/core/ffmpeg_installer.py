@@ -70,17 +70,36 @@ class FFmpegInstaller:
             percent = min(100, (downloaded / total_size) * 100)
             if progress_callback:
                 progress_callback(percent)
-            # Печатаем прогресс каждые 10%
-            if int(percent) % 10 == 0 and int(percent) > 0:
-                print(f"Download: {int(percent)}%")
         
+        # Пробуем несколько методов загрузки
         try:
+            print("Method 1: urllib.request")
             urllib.request.urlretrieve(cls.FFMPEG_URL, zip_path, report_progress)
-            print(f"Download complete: {zip_path.exists()}")
-            return zip_path
-        except Exception as e:
-            print(f"Download error: {e}")
-            raise
+        except Exception as e1:
+            print(f"urllib failed: {e1}")
+            try:
+                print("Method 2: requests")
+                import requests
+                response = requests.get(cls.FFMPEG_URL, stream=True)
+                total = int(response.headers.get('content-length', 0))
+                with open(zip_path, 'wb') as f:
+                    downloaded = 0
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if cls._cancel_flag:
+                            raise Exception("Установка отменена")
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if progress_callback and total > 0:
+                            progress_callback((downloaded / total) * 100)
+            except Exception as e2:
+                print(f"requests failed: {e2}")
+                raise Exception(f"Не удалось загрузить FFmpeg: {e1}")
+        
+        if not zip_path.exists() or zip_path.stat().st_size == 0:
+            raise Exception("Файл не загрузился или пустой")
+        
+        print(f"Download complete: {zip_path.exists()}, size: {zip_path.stat().st_size}")
+        return zip_path
     
     @classmethod
     def extract_ffmpeg(cls, zip_path: Path, dest_dir: Path, progress_callback=None):
