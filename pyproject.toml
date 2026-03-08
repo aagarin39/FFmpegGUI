@@ -38,9 +38,13 @@ dev = [
     "black>=23.0.0",
     "ruff>=0.1.0",
 ]
+build = [
+    "pyinstaller>=6.0.0",
+]
 
 [project.scripts]
 ffmpeggui = "src.main:main"
+ffmpeggui-build = "build:main"
 
 [project.gui-scripts]
 ffmpeggui = "src.main:main"

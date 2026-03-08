@@ -65,15 +65,39 @@ FFmpegGUI/
 
 ## Сборка дистрибутива
 
+### Из исходников
+
+```bash
+# Установка зависимостей
+pip install -r requirements.txt
+
+# Запуск приложения
+python src/main.py
+```
+
+### Создание нативного приложения
+
 ```bash
 # Установка инструментов сборки
-pip install build pyinstaller
+pip install -e ".[build]"
 
-# Сборка Python пакета
-python -m build
+# Сборка под вашу платформу
+python build.py
+```
 
-# Создание исполняемого файла (опционально)
-pyinstaller --onefile --windowed src/main.py
+**Результат:**
+- **Windows**: `dist/FFmpegConverter.exe`
+- **Linux**: `dist/FFmpegConverter` + `.desktop` файл
+- **macOS**: `dist/FFmpegConverter.app`
+
+### Для всех платформ (кросс-компиляция)
+
+Используйте GitHub Actions или CI/CD для сборки под разные платформы:
+
+```bash
+# Windows (из Linux через Wine)
+# Linux (native)
+# macOS (требуется Xcode)
 ```
 
 ## Лицензия
