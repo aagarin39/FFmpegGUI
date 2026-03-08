@@ -1,13 +1,21 @@
 import flet as ft
 from pathlib import Path
 import asyncio
+import sys
 
-try:
-    from .core.ffmpeg import FFmpegWrapper, VideoInfo
-    from .core.presets import PresetManager, Preset
-except ImportError:
-    from core.ffmpeg import FFmpegWrapper, VideoInfo
-    from core.presets import PresetManager, Preset
+# Импорт для работы в скомпилированном приложении
+if getattr(sys, 'frozen', False):
+    # Запуск из exe
+    from src.core.ffmpeg import FFmpegWrapper, VideoInfo
+    from src.core.presets import PresetManager, Preset
+else:
+    # Запуск из исходников
+    try:
+        from .core.ffmpeg import FFmpegWrapper, VideoInfo
+        from .core.presets import PresetManager, Preset
+    except ImportError:
+        from core.ffmpeg import FFmpegWrapper, VideoInfo
+        from core.presets import PresetManager, Preset
 
 
 async def main(page: ft.Page):
