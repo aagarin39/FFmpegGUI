@@ -2,6 +2,7 @@ import customtkinter as ctk
 from tkinter import filedialog, messagebox
 from pathlib import Path
 import threading
+import subprocess
 import sys
 import shutil
 
@@ -436,116 +437,97 @@ class ConverterApp(ctk.CTk):
         if not self.ffmpeg_available:
             return
         
-        # Сохраняем ссылку на меню
-        self.context_menu = ctk.CTkToplevel(self)
-        self.context_menu.title("Управление FFmpeg")
-        self.context_menu.geometry("450x450")
-        self.context_menu.transient(self)
-        self.context_menu.grab_set()
+        # Создаём окно с фиксированным размером
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Управление FFmpeg")
+        dialog.geometry("500x550")
+        dialog.resizable(False, False)
+        dialog.transient(self)
+        dialog.grab_set()
+        
+        # Главный контейнер
+        main_frame = ctk.CTkFrame(dialog)
+        main_frame.pack(fill="both", expand=True, padx=20, pady=20)
         
         # Заголовок
         ctk.CTkLabel(
-            self.context_menu,
+            main_frame,
             text=f"✓ FFmpeg {self.ffmpeg_version}",
             font=ctk.CTkFont(size=20, weight="bold"),
             text_color="green"
-        ).pack(pady=20)
+        ).pack(pady=(0, 20))
         
         # Информация
-        info_frame = ctk.CTkFrame(self.context_menu)
-        info_frame.pack(fill="x", padx=40, pady=10)
+        info_frame = ctk.CTkFrame(main_frame, fg_color="#1f2937")
+        info_frame.pack(fill="x", pady=10)
         
         install_date = FFmpegInstaller.get_install_date()
         install_dir = str(FFmpegInstaller.INSTALL_DIR)
         
         ctk.CTkLabel(
-            self.context_menu,
+            info_frame,
             text=f"📅 Установлен: {install_date}",
-            justify="left"
-        ).pack(anchor="w", padx=40, pady=10)
+            justify="left",
+            text_color="#9ca3af"
+        ).pack(anchor="w", padx=20, pady=15)
         
         ctk.CTkLabel(
-            self.context_menu,
+            info_frame,
             text=f"📁 Путь: {install_dir}",
             justify="left",
-            wraplength=400
-        ).pack(anchor="w", padx=40, pady=10)
+            wraplength=440,
+            text_color="#9ca3af"
+        ).pack(anchor="w", padx=20, pady=(0,15))
         
         # Кнопки
-        btn_frame = ctk.CTkFrame(self.context_menu)
-        btn_frame.pack(pady=20)
-        
-        def on_open_folder():
-            import subprocess
-            subprocess.run(["explorer", str(FFmpegInstaller.INSTALL_DIR)])
-        
-        def on_update():
-            self.context_menu.destroy()
-            self._start_installation()
-        
-        def on_uninstall():
-            result = messagebox.askyesno(
-                "Удаление FFmpeg",
-                "⚠️ Внимание!\n\n"
-                "FFmpeg будет удалён из системы.\n"
-                "Приложение не сможет конвертировать файлы\n"
-                "без установленного FFmpeg.\n\n"
-                "Продолжить?",
-                icon=messagebox.WARNING
-            )
-            if result:
-                success = FFmpegInstaller.uninstall()
-                if success:
-                    messagebox.showinfo("Удалено", "FFmpeg успешно удалён")
-                    self._check_ffmpeg_and_update()
-                else:
-                    messagebox.showerror("Ошибка", "Не удалось удалить FFmpeg")
-            self.context_menu.destroy()
-        
-        def on_check_update():
-            self._manual_check_update()
-        
         ctk.CTkButton(
-            btn_frame,
+            main_frame,
             text="📁 Открыть папку",
-            command=on_open_folder,
-            width=180,
+            command=lambda: subprocess.run(["explorer", install_dir]),
+            height=44,
             fg_color="#2563eb",
             hover_color="#1d4ed8",
-            text_color="white"
-        ).pack(pady=5)
+            text_color="white",
+            font=ctk.CTkFont(size=14)
+        ).pack(fill="x", pady=8)
         
-        ctk.CTkButton(
-            btn_frame,
+        self.btn_check_update = ctk.CTkButton(
+            main_frame,
             text="🔄 Проверить обновления",
-            command=on_check_update,
-            width=180,
+            command=lambda: self._manual_check_update(dialog),
+            height=44,
             fg_color="#d97706",
             hover_color="#b45309",
-            text_color="white"
-        ).pack(pady=5)
+            text_color="white",
+            font=ctk.CTkFont(size=14)
+        ).pack(fill="x", pady=8)
         
         ctk.CTkButton(
-            btn_frame,
+            main_frame,
             text="🗑️ Удалить FFmpeg",
-            command=on_uninstall,
-            width=180,
+            command=lambda: self._uninstall_ffmpeg(dialog),
+            height=44,
             fg_color="#dc2626",
             hover_color="#b91c1c",
-            text_color="white"
-        ).pack(pady=5)
+            text_color="white",
+            font=ctk.CTkFont(size=14)
+        ).pack(fill="x", pady=8)
+        
+        # Разделитель
+        ctk.CTkFrame(main_frame, height=2, fg_color="#374151").pack(fill="x", pady=15)
         
         ctk.CTkButton(
-            btn_frame,
+            main_frame,
             text="Закрыть",
-            command=self.context_menu.destroy,
-            width=180,
+            command=dialog.destroy,
+            height=40,
             fg_color="transparent",
-            border_width=1,
+            border_width=2,
             border_color="#4b5563",
             text_color="white",
-            hover_color="#374151"
-        ).pack(pady=5)
+            hover_color="#374151",
+            font=ctk.CTkFont(size=14)
+        ).pack(pady=(0, 10))
         
         ctk.CTkButton(
             btn_frame,
@@ -579,26 +561,112 @@ class ConverterApp(ctk.CTk):
             hover_color="#374151"
         ).pack(pady=5)
 
-    def _manual_check_update(self):
+    def _manual_check_update(self, dialog):
         """Ручная проверка обновлений"""
-        # Блокируем все кнопки в меню
-        btn_frame = self.context_menu.winfo_children()[-2]
-        for btn in btn_frame.winfo_children():
-            btn.configure(state="disabled")
+        # Блокируем кнопку
+        self.btn_check_update.configure(state="disabled", text="⏳ Проверка...")
         
-        # Добавляем индикатор проверки
-        check_frame = ctk.CTkFrame(self.context_menu, fg_color="transparent")
-        check_frame.pack(pady=15)
+        # Создаём индикатор
+        indicator_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        indicator_frame.pack(pady=10)
         
-        spinner = ctk.CTkProgressBar(check_frame, mode="indeterminate", width=200)
+        spinner = ctk.CTkProgressBar(indicator_frame, mode="indeterminate", width=200)
         spinner.pack()
         spinner.start()
         
-        check_label = ctk.CTkLabel(
-            check_frame,
+        label = ctk.CTkLabel(
+            indicator_frame,
             text="Проверка обновлений...",
             font=ctk.CTkFont(size=12)
         )
+        label.pack(pady=5)
+        
+        def check_thread():
+            try:
+                update_info = FFmpegUpdater.check_for_update()
+                dialog.after(0, lambda: self._show_update_result(dialog, indicator_frame, update_info))
+            except Exception as e:
+                dialog.after(0, lambda: self._show_update_error(dialog, indicator_frame, str(e)))
+        
+        threading.Thread(target=check_thread, daemon=True).start()
+    
+    def _show_update_result(self, dialog, indicator_frame, update_info):
+        """Показать результат проверки"""
+        indicator_frame.destroy()
+        self.btn_check_update.configure(state="normal", text="🔄 Проверить обновления")
+        
+        if update_info:
+            # Показываем результат в новом окне
+            result_dialog = ctk.CTkToplevel(dialog)
+            result_dialog.title("Обновление доступно")
+            result_dialog.geometry("400x250")
+            result_dialog.transient(dialog)
+            result_dialog.grab_set()
+            
+            ctk.CTkLabel(
+                result_dialog,
+                text=f"🔄 Доступна версия: {update_info['version']}",
+                font=ctk.CTkFont(size=16, weight="bold"),
+                text_color="#fcd34d"
+            ).pack(pady=20)
+            
+            ctk.CTkLabel(
+                result_dialog,
+                text=f"Дата: {update_info['date']}",
+                font=ctk.CTkFont(size=12),
+                text_color="white"
+            ).pack(pady=5)
+            
+            btn_frame = ctk.CTkFrame(result_dialog)
+            btn_frame.pack(pady=20)
+            
+            ctk.CTkButton(
+                btn_frame,
+                text="⬇️ Установить",
+                command=lambda: [result_dialog.destroy(), dialog.destroy(), self._start_installation()],
+                width=150,
+                fg_color="#15803d",
+                hover_color="#166534",
+                text_color="white"
+            ).pack(side="left", padx=10)
+            
+            ctk.CTkButton(
+                btn_frame,
+                text="Позже",
+                command=result_dialog.destroy,
+                width=100,
+                fg_color="transparent",
+                border_width=1,
+                text_color="white"
+            ).pack(side="left", padx=10)
+        else:
+            messagebox.showinfo("Обновления", "✓ Установлена последняя версия FFmpeg")
+    
+    def _show_update_error(self, dialog, indicator_frame, error_msg):
+        """Показать ошибку проверки"""
+        indicator_frame.destroy()
+        self.btn_check_update.configure(state="normal", text="🔄 Проверить обновления")
+        
+        messagebox.showerror(
+            "Ошибка",
+            f"Не удалось проверить обновления.\n\n{error_msg}"
+        )
+    
+    def _uninstall_ffmpeg(self, dialog):
+        """Удалить FFmpeg"""
+        result = messagebox.askyesno(
+            "Удаление FFmpeg",
+            "⚠️ FFmpeg будет удалён.\nПриложение не сможет работать без FFmpeg.\n\nПродолжить?",
+            icon=messagebox.WARNING
+        )
+        if result:
+            success = FFmpegInstaller.uninstall()
+            if success:
+                messagebox.showinfo("Удалено", "FFmpeg успешно удалён")
+                dialog.destroy()
+                self._check_ffmpeg_and_update()
+            else:
+                messagebox.showerror("Ошибка", "Не удалось удалить FFmpeg")
         check_label.pack(pady=5)
         
         def check_thread():
@@ -618,87 +686,6 @@ class ConverterApp(ctk.CTk):
         
         thread = threading.Thread(target=check_thread, daemon=True)
         thread.start()
-    
-    def _show_update_result(self, update_info, btn_frame):
-        """Показать результат проверки"""
-        # Разблокируем кнопки
-        for btn in btn_frame.winfo_children():
-            btn.configure(state="normal")
-        
-        # Добавляем результат над кнопками
-        result_frame = ctk.CTkFrame(self.context_menu, fg_color="transparent")
-        result_frame.pack(pady=10, before=btn_frame)
-        
-        if update_info:
-            # Найдено обновление
-            ctk.CTkLabel(
-                result_frame,
-                text=f"🔄 Доступна версия: {update_info['version']}",
-                font=ctk.CTkFont(size=13, weight="bold"),
-                text_color="#fcd34d"
-            ).pack()
-            
-            ctk.CTkLabel(
-                result_frame,
-                text=f"Дата выпуска: {update_info['date']}",
-                font=ctk.CTkFont(size=11),
-                text_color="white"
-            ).pack(pady=2)
-            
-            # Кнопка установки
-            install_btn = ctk.CTkButton(
-                result_frame,
-                text="⬇️ Установить обновление",
-                command=lambda: [self.context_menu.destroy(), self._start_installation()],
-                width=200,
-                height=36,
-                fg_color="#15803d",
-                hover_color="#166534",
-                text_color="white",
-                font=ctk.CTkFont(size=13, weight="bold")
-            )
-            install_btn.pack(pady=10)
-        else:
-            # Обновлений нет
-            ctk.CTkLabel(
-                result_frame,
-                text="✓ Установлена последняя версия",
-                font=ctk.CTkFont(size=13, weight="bold"),
-                text_color="#86efac"
-            ).pack()
-    
-    def _show_update_error(self, error_msg, btn_frame):
-        """Показать ошибку проверки"""
-        # Разблокируем кнопки
-        for btn in btn_frame.winfo_children():
-            btn.configure(state="normal")
-        
-        # Добавляем ошибку над кнопками
-        error_frame = ctk.CTkFrame(self.context_menu, fg_color="transparent")
-        error_frame.pack(pady=10, before=btn_frame)
-        
-        ctk.CTkLabel(
-            error_frame,
-            text="⚠️ Не удалось проверить обновления",
-            font=ctk.CTkFont(size=13, weight="bold"),
-            text_color="#fca5a5"
-        ).pack()
-        
-        ctk.CTkLabel(
-            error_frame,
-            text=f"Ошибка: {error_msg}",
-            font=ctk.CTkFont(size=11),
-            text_color="#f87171"
-        ).pack(pady=2)
-        
-        ctk.CTkLabel(
-            error_frame,
-            text="Проверьте подключение к интернету",
-            font=ctk.CTkFont(size=10),
-            text_color="#9ca3af"
-        ).pack(pady=5)
-
-    # ========== Остальные методы ==========
     
     def _on_preset_change(self, value):
         if not value:
