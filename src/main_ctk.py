@@ -440,7 +440,7 @@ class ConverterApp(ctk.CTk):
         # Создаём окно с фиксированным размером
         dialog = ctk.CTkToplevel(self)
         dialog.title("Управление FFmpeg")
-        dialog.geometry("500x550")
+        dialog.geometry("500x600")
         dialog.resizable(False, False)
         dialog.transient(self)
         dialog.grab_set()
@@ -478,6 +478,15 @@ class ConverterApp(ctk.CTk):
             wraplength=440,
             text_color="#9ca3af"
         ).pack(anchor="w", padx=20, pady=(0,15))
+        
+        # Статус обновлений
+        self.update_status_label = ctk.CTkLabel(
+            main_frame,
+            text="",
+            font=ctk.CTkFont(size=12),
+            wraplength=440
+        )
+        self.update_status_label.pack(pady=10)
         
         # Кнопки
         ctk.CTkButton(
@@ -566,90 +575,58 @@ class ConverterApp(ctk.CTk):
         # Блокируем кнопку
         self.btn_check_update.configure(state="disabled", text="⏳ Проверка...")
         
-        # Создаём индикатор
-        indicator_frame = ctk.CTkFrame(dialog, fg_color="transparent")
-        indicator_frame.pack(pady=10)
-        
-        spinner = ctk.CTkProgressBar(indicator_frame, mode="indeterminate", width=200)
-        spinner.pack()
-        spinner.start()
-        
-        label = ctk.CTkLabel(
-            indicator_frame,
-            text="Проверка обновлений...",
-            font=ctk.CTkFont(size=12)
+        # Показываем статус
+        self.update_status_label.configure(
+            text="🔄 Проверка обновлений...",
+            text_color="#fcd34d"
         )
-        label.pack(pady=5)
         
         def check_thread():
             try:
                 update_info = FFmpegUpdater.check_for_update()
-                dialog.after(0, lambda: self._show_update_result(dialog, indicator_frame, update_info))
+                dialog.after(0, lambda: self._show_update_result(dialog, update_info))
             except Exception as e:
-                dialog.after(0, lambda: self._show_update_error(dialog, indicator_frame, str(e)))
+                dialog.after(0, lambda: self._show_update_error(dialog, str(e)))
         
         threading.Thread(target=check_thread, daemon=True).start()
     
-    def _show_update_result(self, dialog, indicator_frame, update_info):
+    def _show_update_result(self, dialog, update_info):
         """Показать результат проверки"""
-        indicator_frame.destroy()
         self.btn_check_update.configure(state="normal", text="🔄 Проверить обновления")
         
         if update_info:
-            # Показываем результат в новом окне
-            result_dialog = ctk.CTkToplevel(dialog)
-            result_dialog.title("Обновление доступно")
-            result_dialog.geometry("400x250")
-            result_dialog.transient(dialog)
-            result_dialog.grab_set()
-            
-            ctk.CTkLabel(
-                result_dialog,
-                text=f"🔄 Доступна версия: {update_info['version']}",
-                font=ctk.CTkFont(size=16, weight="bold"),
+            # Найдено обновление
+            self.update_status_label.configure(
+                text=f"🔄 Доступна версия {update_info['version']} от {update_info['date']}",
                 text_color="#fcd34d"
-            ).pack(pady=20)
+            )
             
-            ctk.CTkLabel(
-                result_dialog,
-                text=f"Дата: {update_info['date']}",
-                font=ctk.CTkFont(size=12),
-                text_color="white"
-            ).pack(pady=5)
-            
-            btn_frame = ctk.CTkFrame(result_dialog)
-            btn_frame.pack(pady=20)
-            
-            ctk.CTkButton(
-                btn_frame,
-                text="⬇️ Установить",
-                command=lambda: [result_dialog.destroy(), dialog.destroy(), self._start_installation()],
-                width=150,
+            # Добавляем кнопку установки
+            install_btn = ctk.CTkButton(
+                dialog,
+                text="⬇️ Установить обновление",
+                command=lambda: [dialog.destroy(), self._start_installation()],
+                height=44,
                 fg_color="#15803d",
                 hover_color="#166534",
-                text_color="white"
-            ).pack(side="left", padx=10)
-            
-            ctk.CTkButton(
-                btn_frame,
-                text="Позже",
-                command=result_dialog.destroy,
-                width=100,
-                fg_color="transparent",
-                border_width=1,
-                text_color="white"
-            ).pack(side="left", padx=10)
+                text_color="white",
+                font=ctk.CTkFont(size=14, weight="bold")
+            )
+            install_btn.pack(pady=10)
         else:
-            messagebox.showinfo("Обновления", "✓ Установлена последняя версия FFmpeg")
+            # Обновлений нет
+            self.update_status_label.configure(
+                text="✓ Установлена последняя версия",
+                text_color="#86efac"
+            )
     
-    def _show_update_error(self, dialog, indicator_frame, error_msg):
+    def _show_update_error(self, dialog, error_msg):
         """Показать ошибку проверки"""
-        indicator_frame.destroy()
         self.btn_check_update.configure(state="normal", text="🔄 Проверить обновления")
         
-        messagebox.showerror(
-            "Ошибка",
-            f"Не удалось проверить обновления.\n\n{error_msg}"
+        self.update_status_label.configure(
+            text=f"⚠️ Ошибка: {error_msg}",
+            text_color="#fca5a5"
         )
     
     def _uninstall_ffmpeg(self, dialog):
