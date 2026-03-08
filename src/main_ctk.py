@@ -62,6 +62,11 @@ class ConverterApp(ctk.CTk):
         if shutil.which("ffmpeg"):
             return True
         
+        # Проверяем папку установки
+        install_dir = Path.home() / "FFmpegGUI" / "ffmpeg"
+        if (install_dir / "ffmpeg.exe").exists():
+            return True
+        
         # Проверяем локальную папку ffmpeg
         local_ffmpeg = Path(__file__).parent.parent / "ffmpeg"
         if local_ffmpeg.exists():
@@ -96,10 +101,10 @@ class ConverterApp(ctk.CTk):
 
 Вы можете установить его автоматически:
 • FFmpeg будет загружен с официального GitHub-репозитория
-• Установлен в C:\\Program Files\\FFmpegGUI
-• Добавлен в системный PATH
+• Установлен в папку пользователя: %USERPROFILE%\\FFmpegGUI\\ffmpeg
+• Добавлен в PATH пользователя
 
-Требуется подключение к интернету и права администратора."""
+Не требуются права администратора."""
         
         ctk.CTkLabel(
             main_frame,
@@ -206,6 +211,18 @@ class ConverterApp(ctk.CTk):
             font=ctk.CTkFont(size=11)
         )
         self.ffmpeg_status_label.pack(padx=10, pady=5)
+        
+        # Кнопка установки FFmpeg (если не найден)
+        if not self.ffmpeg_available:
+            self.btn_install_ffmpeg = ctk.CTkButton(
+                ffmpeg_status_frame,
+                text="Установить FFmpeg",
+                command=self._show_ffmpeg_warning,
+                width=150,
+                height=25,
+                fg_color="orange"
+            )
+            self.btn_install_ffmpeg.pack(padx=10, pady=5)
 
         folder_frame = ctk.CTkFrame(self)
         folder_frame.grid(row=1, column=0, pady=10, padx=20, sticky="ew")
@@ -454,7 +471,13 @@ class ConverterApp(ctk.CTk):
 
     def start_conversion(self):
         if not self.ffmpeg_available:
-            messagebox.showerror("Ошибка", "FFmpeg не найден!\nУстановите FFmpeg перед конвертацией.")
+            result = messagebox.askyesno(
+                "FFmpeg не найден",
+                "FFmpeg не найден в системе!\n\nХотите установить его сейчас?",
+                icon=messagebox.WARNING
+            )
+            if result:
+                self._show_ffmpeg_warning()
             return
             
         if not self.selected_folder or not self.files_list:

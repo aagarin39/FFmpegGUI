@@ -2,7 +2,6 @@
 Модуль для автоматической установки FFmpeg.
 """
 
-import os
 import sys
 import subprocess
 import tempfile
@@ -16,20 +15,15 @@ class FFmpegInstaller:
     """Установщик FFmpeg для Windows."""
     
     # Официальный GitHub релиз от BtbN (зеркало ffmpeg.org)
-    # https://github.com/BtbN/FFmpeg-Builds/releases
     FFMPEG_URL = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
-    INSTALL_DIR = Path(r"C:\Program Files\FFmpegGUI")
+    
+    # Установка в папку пользователя (не требует прав администратора)
+    INSTALL_DIR = Path.home() / "FFmpegGUI" / "ffmpeg"
     
     @classmethod
     def is_installed(cls) -> bool:
         """Проверка установлен ли FFmpeg."""
-        # Проверяем в PATH
-        if shutil.which("ffmpeg"):
-            return True
-        
-        # Проверяем в директории установки
-        ffmpeg_exe = cls.INSTALL_DIR / "bin" / "ffmpeg.exe"
-        return ffmpeg_exe.exists()
+        return cls.get_ffmpeg_path() is not None
     
     @classmethod
     def get_ffmpeg_path(cls) -> str | None:
@@ -40,7 +34,7 @@ class FFmpegInstaller:
             return ffmpeg_in_path
         
         # Проверяем в директории установки
-        ffmpeg_exe = cls.INSTALL_DIR / "bin" / "ffmpeg.exe"
+        ffmpeg_exe = cls.INSTALL_DIR / "ffmpeg.exe"
         if ffmpeg_exe.exists():
             return str(ffmpeg_exe)
         
@@ -71,8 +65,8 @@ class FFmpegInstaller:
             members = zip_ref.namelist()
             base_folder = None
             for member in members:
-                if member.endswith('bin/ffmpeg.exe'):
-                    base_folder = member.split('/')[0]
+                if 'bin/ffmpeg.exe' in member or 'bin\\ffmpeg.exe' in member:
+                    base_folder = member.split('/')[0].replace('\\', '/')
                     break
             
             if not base_folder:
@@ -90,12 +84,12 @@ class FFmpegInstaller:
     
     @classmethod
     def add_to_path(cls) -> bool:
-        """Добавить FFmpeg в системный PATH."""
+        """Добавить FFmpeg в PATH пользователя."""
         try:
-            bin_path = str(cls.INSTALL_DIR / "bin")
+            bin_path = str(cls.INSTALL_DIR)
             
-            # Команда для добавления в системный PATH
-            cmd = f'setx /M PATH "%PATH%;{bin_path}"'
+            # Добавляем в PATH пользователя через setx
+            cmd = f'setx PATH "%PATH%;{bin_path}"'
             subprocess.run(cmd, shell=True, check=True)
             
             return True
@@ -116,12 +110,22 @@ class FFmpegInstaller:
             # Скачиваем
             if progress_callback:
                 progress_callback("Скачивание FFmpeg...", 0)
-            zip_path = cls.download_ffmpeg(lambda p: progress_callback("Скачивание...", p))
+            
+            def download_progress(p):
+                if progress_callback:
+                    progress_callback("Скачивание...", p)
+            
+            zip_path = cls.download_ffmpeg(download_progress)
             
             # Распаковываем
             if progress_callback:
                 progress_callback("Распаковка...", 0)
-            cls.extract_ffmpeg(zip_path, cls.INSTALL_DIR, lambda p: progress_callback("Распаковка...", p))
+            
+            def extract_progress(p):
+                if progress_callback:
+                    progress_callback("Распаковка...", p)
+            
+            cls.extract_ffmpeg(zip_path, cls.INSTALL_DIR, extract_progress)
             
             # Очищаем временные файлы
             zip_path.unlink()
