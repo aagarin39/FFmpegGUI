@@ -83,15 +83,20 @@ class FFmpegInstaller:
             base_folder = None
             for member in members:
                 if 'bin/ffmpeg.exe' in member or 'bin\\ffmpeg.exe' in member:
+                    # Получаем имя папки: ffmpeg-xxxx-win64-gpl
                     base_folder = member.split('/')[0].replace('\\', '/')
                     break
             
             if not base_folder:
                 raise Exception("Не удалось найти бинарники FFmpeg в архиве")
             
+            print(f"Base folder: {base_folder}")
+            
             # Распаковываем только bin папку
             bin_folder = f"{base_folder}/bin/"
             members_to_extract = [m for m in members if m.startswith(bin_folder)]
+            
+            print(f"Extracting {len(members_to_extract)} files from {bin_folder}")
             
             total = len(members_to_extract)
             for i, member in enumerate(members_to_extract):
@@ -99,11 +104,11 @@ class FFmpegInstaller:
                     raise Exception("Установка отменена пользователем")
                 
                 # Извлекаем файлы из bin/ прямо в dest_dir
+                # ffmpeg-xxxx/bin/ffmpeg.exe -> dest_dir/ffmpeg.exe
                 relative_path = member.replace(bin_folder, '')
                 dest_path = dest_dir / relative_path
                 
-                # Создаём директорию если нужно
-                dest_path.parent.mkdir(parents=True, exist_ok=True)
+                print(f"Extracting {member} -> {dest_path}")
                 
                 # Извлекаем
                 with zip_ref.open(member) as source:
@@ -112,6 +117,10 @@ class FFmpegInstaller:
                 
                 if progress_callback:
                     progress_callback((i / total) * 100)
+            
+            print(f"Extraction complete. Files in {dest_dir}:")
+            for f in dest_dir.iterdir():
+                print(f"  {f.name}")
     
     @classmethod
     def add_to_path(cls) -> bool:
