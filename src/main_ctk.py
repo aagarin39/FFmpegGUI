@@ -436,50 +436,51 @@ class ConverterApp(ctk.CTk):
         if not self.ffmpeg_available:
             return
         
-        dialog = ctk.CTkToplevel(self)
-        dialog.title("Управление FFmpeg")
-        dialog.geometry("450x400")
-        dialog.transient(self)
-        dialog.grab_set()
+        # Сохраняем ссылку на меню
+        self.context_menu = ctk.CTkToplevel(self)
+        self.context_menu.title("Управление FFmpeg")
+        self.context_menu.geometry("450x450")
+        self.context_menu.transient(self)
+        self.context_menu.grab_set()
         
         # Заголовок
         ctk.CTkLabel(
-            dialog,
+            self.context_menu,
             text=f"✓ FFmpeg {self.ffmpeg_version}",
             font=ctk.CTkFont(size=20, weight="bold"),
             text_color="green"
         ).pack(pady=20)
         
         # Информация
-        info_frame = ctk.CTkFrame(dialog)
+        info_frame = ctk.CTkFrame(self.context_menu)
         info_frame.pack(fill="x", padx=40, pady=10)
         
         install_date = FFmpegInstaller.get_install_date()
         install_dir = str(FFmpegInstaller.INSTALL_DIR)
         
         ctk.CTkLabel(
-            info_frame,
+            self.context_menu,
             text=f"📅 Установлен: {install_date}",
             justify="left"
-        ).pack(anchor="w", padx=20, pady=10)
+        ).pack(anchor="w", padx=40, pady=10)
         
         ctk.CTkLabel(
-            info_frame,
+            self.context_menu,
             text=f"📁 Путь: {install_dir}",
             justify="left",
             wraplength=400
-        ).pack(anchor="w", padx=20, pady=10)
+        ).pack(anchor="w", padx=40, pady=10)
         
         # Кнопки
-        btn_frame = ctk.CTkFrame(dialog)
-        btn_frame.pack(pady=30)
+        btn_frame = ctk.CTkFrame(self.context_menu)
+        btn_frame.pack(pady=20)
         
         def on_open_folder():
             import subprocess
             subprocess.run(["explorer", str(FFmpegInstaller.INSTALL_DIR)])
         
         def on_update():
-            dialog.destroy()
+            self.context_menu.destroy()
             self._start_installation()
         
         def on_uninstall():
@@ -499,10 +500,9 @@ class ConverterApp(ctk.CTk):
                     self._check_ffmpeg_and_update()
                 else:
                     messagebox.showerror("Ошибка", "Не удалось удалить FFmpeg")
-            dialog.destroy()
+            self.context_menu.destroy()
         
         def on_check_update():
-            dialog.destroy()
             self._manual_check_update()
         
         ctk.CTkButton(
@@ -538,7 +538,39 @@ class ConverterApp(ctk.CTk):
         ctk.CTkButton(
             btn_frame,
             text="Закрыть",
-            command=dialog.destroy,
+            command=self.context_menu.destroy,
+            width=180,
+            fg_color="transparent",
+            border_width=1,
+            border_color="#4b5563",
+            text_color="white",
+            hover_color="#374151"
+        ).pack(pady=5)
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="🔄 Проверить обновления",
+            command=on_check_update,
+            width=180,
+            fg_color="#d97706",
+            hover_color="#b45309",
+            text_color="white"
+        ).pack(pady=5)
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="🗑️ Удалить FFmpeg",
+            command=on_uninstall,
+            width=180,
+            fg_color="#dc2626",
+            hover_color="#b91c1c",
+            text_color="white"
+        ).pack(pady=5)
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="Закрыть",
+            command=self.context_menu.destroy,
             width=180,
             fg_color="transparent",
             border_width=1,
@@ -548,69 +580,90 @@ class ConverterApp(ctk.CTk):
         ).pack(pady=5)
 
     def _manual_check_update(self):
-        """Ручная проверка обновлений"""
-        # Создаём диалог проверки
-        dialog = ctk.CTkToplevel(self)
-        dialog.title("Проверка обновлений")
-        dialog.geometry("400x200")
-        dialog.transient(self)
-        dialog.grab_set()
+        """Ручная проверка обновлений в рамках контекстного меню"""
+        # Находим кнопку "Проверить обновления" в btn_frame
+        btn_frame = self.context_menu.winfo_children()[-2]  # Предпоследний элемент - btn_frame
+        check_btn = btn_frame.winfo_children()[1]  # Вторая кнопка - "Проверить обновления"
         
-        ctk.CTkLabel(
-            dialog,
-            text="Проверка обновлений...",
-            font=ctk.CTkFont(size=16, weight="bold")
-        ).pack(pady=20)
+        original_text = check_btn.cget("text")
+        original_fg = check_btn.cget("fg_color")
+        original_state = check_btn.cget("state")
         
-        progress_bar = ctk.CTkProgressBar(dialog, mode="indeterminate")
-        progress_bar.pack(pady=20, padx=40, fill="x")
-        progress_bar.start()
-        
-        status_label = ctk.CTkLabel(dialog, text="Соединение с GitHub...")
-        status_label.pack(pady=10)
+        # Блокируем кнопку и показываем прогресс
+        check_btn.configure(
+            fg_color="#6b7280",
+            text="⏳ Проверка...",
+            state="disabled"
+        )
         
         def check_thread():
             try:
-                dialog.after(0, lambda: status_label.configure(text="Запрос информации..."))
-                
                 update_info = FFmpegUpdater.check_for_update()
                 
-                dialog.after(0, lambda: self._show_check_result(update_info, dialog))
+                # Показываем результат в том же меню
+                self.after(0, lambda: self._show_check_result_in_menu(
+                    update_info, check_btn, original_text, original_fg, original_state
+                ))
             except Exception as e:
-                dialog.after(0, lambda: self._show_check_error(str(e), dialog))
+                self.after(0, lambda: self._show_check_error_in_menu(
+                    str(e), check_btn, original_text, original_fg, original_state
+                ))
         
         thread = threading.Thread(target=check_thread, daemon=True)
         thread.start()
     
-    def _show_check_result(self, update_info, dialog):
-        """Показать результат проверки"""
-        dialog.destroy()
+    def _show_check_result_in_menu(self, update_info, btn, orig_text, orig_fg, orig_state):
+        """Показать результат проверки в меню"""
+        # Восстанавливаем кнопку
+        btn.configure(text=orig_text, fg_color=orig_fg, state=orig_state)
+        
+        # Добавляем label с результатом
+        result_label = ctk.CTkLabel(
+            self.context_menu,
+            text="",
+            text_color="white" if update_info else "#86efac",
+            font=ctk.CTkFont(size=12),
+            justify="center"
+        )
+        result_label.pack(pady=10)
         
         if update_info:
-            result = messagebox.askyesno(
-                "Доступно обновление",
-                f"Найдена новая версия: {update_info['version']}\n"
-                f"Дата: {update_info['date']}\n\n"
-                "Установить?",
-                icon=messagebox.INFO
+            result_label.configure(
+                text=f"🔄 Найдена версия: {update_info['version']}\n{update_info['date']}",
+                text_color="#fcd34d"
             )
-            if result:
-                self._start_installation()
+            
+            # Добавляем кнопку установки
+            install_btn = ctk.CTkButton(
+                self.context_menu,
+                text="⬇️ Установить",
+                command=lambda: [self.context_menu.destroy(), self._start_installation()],
+                width=180,
+                fg_color="#15803d",
+                hover_color="#166534",
+                text_color="white"
+            )
+            install_btn.pack(pady=5)
         else:
-            messagebox.showinfo(
-                "Обновления",
-                "✓ Установлена последняя версия FFmpeg."
+            result_label.configure(
+                text="✓ Установлена последняя версия",
+                text_color="#86efac"
             )
     
-    def _show_check_error(self, error_msg, dialog):
-        """Показать ошибку проверки"""
-        dialog.destroy()
-        messagebox.showerror(
-            "Ошибка",
-            f"Не удалось проверить обновления.\n\n"
-            f"Ошибка: {error_msg}\n\n"
-            "Проверьте подключение к интернету."
+    def _show_check_error_in_menu(self, error_msg, btn, orig_text, orig_fg, orig_state):
+        """Показать ошибку проверки в меню"""
+        # Восстанавливаем кнопку
+        btn.configure(text=orig_text, fg_color=orig_fg, state=orig_state)
+        
+        # Добавляем label с ошибкой
+        error_label = ctk.CTkLabel(
+            self.context_menu,
+            text=f"⚠️ Ошибка проверки\n{error_msg}",
+            text_color="#fca5a5",
+            font=ctk.CTkFont(size=12),
+            justify="center"
         )
+        error_label.pack(pady=10)
 
     # ========== Остальные методы ==========
     
