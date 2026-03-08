@@ -98,7 +98,7 @@ exe = EXE(
     # Запускаем PyInstaller
     run_command([sys.executable, '-m', 'PyInstaller', 'ffmpeggui.spec', '--clean'])
     
-    print("\n✓ Windows сборка завершена!")
+    print("\n[OK] Windows сборка завершена!")
     print(f"  EXE файл: dist/FFmpegConverter.exe")
 
 
@@ -173,7 +173,7 @@ exe = EXE(
     
     run_command([sys.executable, '-m', 'PyInstaller', 'ffmpeggui.spec', '--clean'])
     
-    print("\n✓ Linux сборка завершена!")
+    print("\n[OK] Linux сборка завершена!")
     print(f"  Бинарник: dist/FFmpegConverter")
     
     # Создаём .desktop файл
@@ -260,7 +260,7 @@ app = APP(
     
     run_command([sys.executable, '-m', 'PyInstaller', 'ffmpeggui.spec', '--clean', '--windowed'])
     
-    print("\n✓ macOS сборка завершена!")
+    print("\n[OK] macOS сборка завершена!")
     print(f"  App файл: dist/FFmpegConverter.app")
 
 
@@ -322,7 +322,7 @@ def main():
     create_readme_dist()
     
     print("\n" + "=" * 50)
-    print("✓ Сборка завершена!")
+    print("[OK] Сборка завершена!")
     print(f"  Дистрибутив в папке: dist/")
 
 
