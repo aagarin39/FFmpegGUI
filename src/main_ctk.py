@@ -580,90 +580,123 @@ class ConverterApp(ctk.CTk):
         ).pack(pady=5)
 
     def _manual_check_update(self):
-        """Ручная проверка обновлений в рамках контекстного меню"""
-        # Находим кнопку "Проверить обновления" в btn_frame
-        btn_frame = self.context_menu.winfo_children()[-2]  # Предпоследний элемент - btn_frame
-        check_btn = btn_frame.winfo_children()[1]  # Вторая кнопка - "Проверить обновления"
+        """Ручная проверка обновлений"""
+        # Блокируем все кнопки в меню
+        btn_frame = self.context_menu.winfo_children()[-2]
+        for btn in btn_frame.winfo_children():
+            btn.configure(state="disabled")
         
-        original_text = check_btn.cget("text")
-        original_fg = check_btn.cget("fg_color")
-        original_state = check_btn.cget("state")
+        # Добавляем индикатор проверки
+        check_frame = ctk.CTkFrame(self.context_menu, fg_color="transparent")
+        check_frame.pack(pady=15)
         
-        # Блокируем кнопку и показываем прогресс
-        check_btn.configure(
-            fg_color="#6b7280",
-            text="⏳ Проверка...",
-            state="disabled"
+        spinner = ctk.CTkProgressBar(check_frame, mode="indeterminate", width=200)
+        spinner.pack()
+        spinner.start()
+        
+        check_label = ctk.CTkLabel(
+            check_frame,
+            text="Проверка обновлений...",
+            font=ctk.CTkFont(size=12)
         )
+        check_label.pack(pady=5)
         
         def check_thread():
             try:
                 update_info = FFmpegUpdater.check_for_update()
                 
-                # Показываем результат в том же меню
-                self.after(0, lambda: self._show_check_result_in_menu(
-                    update_info, check_btn, original_text, original_fg, original_state
-                ))
+                # Удаляем индикатор и показываем результат
+                self.after(0, lambda: [
+                    check_frame.destroy(),
+                    self._show_update_result(update_info, btn_frame)
+                ])
             except Exception as e:
-                self.after(0, lambda: self._show_check_error_in_menu(
-                    str(e), check_btn, original_text, original_fg, original_state
-                ))
+                self.after(0, lambda: [
+                    check_frame.destroy(),
+                    self._show_update_error(str(e), btn_frame)
+                ])
         
         thread = threading.Thread(target=check_thread, daemon=True)
         thread.start()
     
-    def _show_check_result_in_menu(self, update_info, btn, orig_text, orig_fg, orig_state):
-        """Показать результат проверки в меню"""
-        # Восстанавливаем кнопку
-        btn.configure(text=orig_text, fg_color=orig_fg, state=orig_state)
+    def _show_update_result(self, update_info, btn_frame):
+        """Показать результат проверки"""
+        # Разблокируем кнопки
+        for btn in btn_frame.winfo_children():
+            btn.configure(state="normal")
         
-        # Добавляем label с результатом
-        result_label = ctk.CTkLabel(
-            self.context_menu,
-            text="",
-            text_color="white" if update_info else "#86efac",
-            font=ctk.CTkFont(size=12),
-            justify="center"
-        )
-        result_label.pack(pady=10)
+        # Добавляем результат над кнопками
+        result_frame = ctk.CTkFrame(self.context_menu, fg_color="transparent")
+        result_frame.pack(pady=10, before=btn_frame)
         
         if update_info:
-            result_label.configure(
-                text=f"🔄 Найдена версия: {update_info['version']}\n{update_info['date']}",
+            # Найдено обновление
+            ctk.CTkLabel(
+                result_frame,
+                text=f"🔄 Доступна версия: {update_info['version']}",
+                font=ctk.CTkFont(size=13, weight="bold"),
                 text_color="#fcd34d"
-            )
+            ).pack()
             
-            # Добавляем кнопку установки
+            ctk.CTkLabel(
+                result_frame,
+                text=f"Дата выпуска: {update_info['date']}",
+                font=ctk.CTkFont(size=11),
+                text_color="white"
+            ).pack(pady=2)
+            
+            # Кнопка установки
             install_btn = ctk.CTkButton(
-                self.context_menu,
-                text="⬇️ Установить",
+                result_frame,
+                text="⬇️ Установить обновление",
                 command=lambda: [self.context_menu.destroy(), self._start_installation()],
-                width=180,
+                width=200,
+                height=36,
                 fg_color="#15803d",
                 hover_color="#166534",
-                text_color="white"
+                text_color="white",
+                font=ctk.CTkFont(size=13, weight="bold")
             )
-            install_btn.pack(pady=5)
+            install_btn.pack(pady=10)
         else:
-            result_label.configure(
+            # Обновлений нет
+            ctk.CTkLabel(
+                result_frame,
                 text="✓ Установлена последняя версия",
+                font=ctk.CTkFont(size=13, weight="bold"),
                 text_color="#86efac"
-            )
+            ).pack()
     
-    def _show_check_error_in_menu(self, error_msg, btn, orig_text, orig_fg, orig_state):
-        """Показать ошибку проверки в меню"""
-        # Восстанавливаем кнопку
-        btn.configure(text=orig_text, fg_color=orig_fg, state=orig_state)
+    def _show_update_error(self, error_msg, btn_frame):
+        """Показать ошибку проверки"""
+        # Разблокируем кнопки
+        for btn in btn_frame.winfo_children():
+            btn.configure(state="normal")
         
-        # Добавляем label с ошибкой
-        error_label = ctk.CTkLabel(
-            self.context_menu,
-            text=f"⚠️ Ошибка проверки\n{error_msg}",
-            text_color="#fca5a5",
-            font=ctk.CTkFont(size=12),
-            justify="center"
-        )
-        error_label.pack(pady=10)
+        # Добавляем ошибку над кнопками
+        error_frame = ctk.CTkFrame(self.context_menu, fg_color="transparent")
+        error_frame.pack(pady=10, before=btn_frame)
+        
+        ctk.CTkLabel(
+            error_frame,
+            text="⚠️ Не удалось проверить обновления",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color="#fca5a5"
+        ).pack()
+        
+        ctk.CTkLabel(
+            error_frame,
+            text=f"Ошибка: {error_msg}",
+            font=ctk.CTkFont(size=11),
+            text_color="#f87171"
+        ).pack(pady=2)
+        
+        ctk.CTkLabel(
+            error_frame,
+            text="Проверьте подключение к интернету",
+            font=ctk.CTkFont(size=10),
+            text_color="#9ca3af"
+        ).pack(pady=5)
 
     # ========== Остальные методы ==========
     
