@@ -375,13 +375,24 @@ class ConverterApp(ctk.CTk):
         """Открыть конструктор пресетов."""
         dialog = ctk.CTkToplevel(self)
         dialog.title("Конструктор пресетов")
-        dialog.geometry("550x680")
+        dialog.geometry("550x700")
         dialog.transient(self)
         dialog.grab_set()
         
+        # Тёмная тема для всего диалога
+        dark_bg = "#2b2b2b"
+        dialog.configure(fg_color=dark_bg)
+        
+        # Главный фрейм
+        main_frame = ctk.CTkFrame(dialog, fg_color=dark_bg)
+        main_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        
         # Прокручиваемый контент
-        scroll_frame = ctk.CTkScrollableFrame(dialog)
-        scroll_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        scroll_frame = ctk.CTkScrollableFrame(
+            main_frame,
+            fg_color=dark_bg
+        )
+        scroll_frame.pack(fill="both", expand=True)
         scroll_frame.grid_columnconfigure(0, weight=1)
         
         row = 0
@@ -390,7 +401,8 @@ class ConverterApp(ctk.CTk):
         ctk.CTkLabel(
             scroll_frame,
             text="Создание пользовательского пресета",
-            font=ctk.CTkFont(size=16, weight="bold")
+            font=ctk.CTkFont(size=16, weight="bold"),
+            text_color="white"
         ).grid(row=row, column=0, pady=(0, 15), sticky="w")
         row += 1
         
@@ -407,7 +419,8 @@ class ConverterApp(ctk.CTk):
         ctk.CTkLabel(
             scroll_frame,
             text="Название пресета *",
-            font=ctk.CTkFont(weight="bold")
+            font=ctk.CTkFont(weight="bold"),
+            text_color="white"
         ).grid(row=row, column=0, sticky="w", pady=(10, 5))
         row += 1
         name_entry = ctk.CTkEntry(scroll_frame, placeholder_text="Например: Мой пресет")
@@ -418,7 +431,8 @@ class ConverterApp(ctk.CTk):
         ctk.CTkLabel(
             scroll_frame,
             text="Описание",
-            font=ctk.CTkFont(weight="bold")
+            font=ctk.CTkFont(weight="bold"),
+            text_color="white"
         ).grid(row=row, column=0, sticky="w", pady=(10, 5))
         row += 1
         desc_entry = ctk.CTkEntry(scroll_frame, placeholder_text="Краткое описание пресета")
@@ -429,20 +443,25 @@ class ConverterApp(ctk.CTk):
         ctk.CTkLabel(
             scroll_frame,
             text="Видео кодек",
-            font=ctk.CTkFont(weight="bold")
+            font=ctk.CTkFont(weight="bold"),
+            text_color="white"
         ).grid(row=row, column=0, sticky="w", pady=(10, 5))
         row += 1
         codec_var = ctk.StringVar(value="h264_nvenc")
         codec_combo = ctk.CTkComboBox(
             scroll_frame,
-            values=["h264_nvenc", "hevc_nvenc"],
+            values=[
+                "h264_nvenc", "hevc_nvenc",  # NVIDIA
+                "h264_qsv", "hevc_qsv",      # Intel
+                "h264_amf", "hevc_amf"       # AMD
+            ],
             variable=codec_var,
             command=lambda x: None
         )
         codec_combo.grid(row=row, column=0, padx=0, pady=5, sticky="ew")
         ctk.CTkLabel(
             scroll_frame,
-            text="h264_nvenc - быстрее, hevc_nvenc - лучше сжатие",
+            text="NVIDIA: nvenc, Intel: qsv (QuickSync), AMD: amf",
             text_color="gray",
             font=ctk.CTkFont(size=10)
         ).grid(row=row+1, column=0, sticky="w", pady=(0, 10))
@@ -452,7 +471,8 @@ class ConverterApp(ctk.CTk):
         ctk.CTkLabel(
             scroll_frame,
             text="CQ (качество 1-51)",
-            font=ctk.CTkFont(weight="bold")
+            font=ctk.CTkFont(weight="bold"),
+            text_color="white"
         ).grid(row=row, column=0, sticky="w", pady=(10, 5))
         row += 1
         cq_entry = ctk.CTkEntry(scroll_frame)
@@ -470,7 +490,8 @@ class ConverterApp(ctk.CTk):
         ctk.CTkLabel(
             scroll_frame,
             text="Масштабирование",
-            font=ctk.CTkFont(weight="bold")
+            font=ctk.CTkFont(weight="bold"),
+            text_color="white"
         ).grid(row=row, column=0, sticky="w", pady=(10, 5))
         row += 1
         scale_var = ctk.StringVar(value="")
@@ -510,7 +531,8 @@ class ConverterApp(ctk.CTk):
         ctk.CTkLabel(
             scroll_frame,
             text="Контейнер",
-            font=ctk.CTkFont(weight="bold")
+            font=ctk.CTkFont(weight="bold"),
+            text_color="white"
         ).grid(row=row, column=0, sticky="w", pady=(10, 5))
         row += 1
         container_var = ctk.StringVar(value="mkv")
@@ -530,7 +552,7 @@ class ConverterApp(ctk.CTk):
         row += 2
         
         # Кнопки
-        btn_frame = ctk.CTkFrame(scroll_frame)
+        btn_frame = ctk.CTkFrame(scroll_frame, fg_color=dark_bg)
         btn_frame.grid(row=row, column=0, pady=20, sticky="e")
         
         def save_preset():
@@ -573,6 +595,14 @@ class ConverterApp(ctk.CTk):
             text="Отмена",
             command=lambda: dialog.destroy(),
             width=120
+        ).pack(side="right", padx=5)
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="Сохранить",
+            command=save_preset,
+            width=120,
+            fg_color="green"
         ).pack(side="right", padx=5)
         
         ctk.CTkButton(

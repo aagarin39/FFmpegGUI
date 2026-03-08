@@ -124,17 +124,27 @@ class FFmpegWrapper:
 
     def get_preset_args(self, preset_name: str, custom_params: Optional[dict] = None) -> list[str]:
         presets = {
-            "h264_standard": self._h264_standard(custom_params),
-            "h264_light": self._h264_light(custom_params),
-            "h264_mp4": self._h264_mp4(custom_params),
-            "h265_standard": self._h265_standard(custom_params),
-            "h265_light": self._h265_light(custom_params),
-            "h265_mp4": self._h265_mp4(custom_params),
-            "h265_stabilize": self._h265_stabilize(custom_params),
+            # NVIDIA
+            "h264_nvenc_standard": self._h264_nvenc_standard(custom_params),
+            "h264_nvenc_light": self._h264_nvenc_light(custom_params),
+            "h264_nvenc_mp4": self._h264_nvenc_mp4(custom_params),
+            "hevc_nvenc_standard": self._hevc_nvenc_standard(custom_params),
+            "hevc_nvenc_light": self._hevc_nvenc_light(custom_params),
+            "hevc_nvenc_mp4": self._hevc_nvenc_mp4(custom_params),
+            # Intel QuickSync
+            "h264_qsv_standard": self._h264_qsv_standard(custom_params),
+            "h264_qsv_light": self._h264_qsv_light(custom_params),
+            "hevc_qsv_standard": self._hevc_qsv_standard(custom_params),
+            "hevc_qsv_light": self._hevc_qsv_light(custom_params),
+            # AMD AMF
+            "h264_amf_standard": self._h264_amf_standard(custom_params),
+            "h264_amf_light": self._h264_amf_light(custom_params),
+            "hevc_amf_standard": self._hevc_amf_standard(custom_params),
+            "hevc_amf_light": self._hevc_amf_light(custom_params),
         }
         return presets.get(preset_name, [])
 
-    def _h264_standard(self, params: Optional[dict] = None) -> list[str]:
+    def _h264_nvenc_standard(self, params: Optional[dict] = None) -> list[str]:
         p = params or {}
         cq = p.get("cq", 20)
         return [
@@ -145,7 +155,7 @@ class FFmpegWrapper:
             "-map", "0:s:?", "-c:s", "srt"
         ]
 
-    def _h264_light(self, params: Optional[dict] = None) -> list[str]:
+    def _h264_nvenc_light(self, params: Optional[dict] = None) -> list[str]:
         p = params or {}
         cq = p.get("cq", 30)
         return [
@@ -156,7 +166,7 @@ class FFmpegWrapper:
             "-map", "0:s:?", "-c:s", "srt"
         ]
 
-    def _h264_mp4(self, params: Optional[dict] = None) -> list[str]:
+    def _h264_nvenc_mp4(self, params: Optional[dict] = None) -> list[str]:
         p = params or {}
         cq = p.get("cq", 20)
         return [
@@ -167,7 +177,7 @@ class FFmpegWrapper:
             "-map", "-0:s"
         ]
 
-    def _h265_standard(self, params: Optional[dict] = None) -> list[str]:
+    def _hevc_nvenc_standard(self, params: Optional[dict] = None) -> list[str]:
         p = params or {}
         cq = p.get("cq", 20)
         return [
@@ -178,7 +188,7 @@ class FFmpegWrapper:
             "-map", "0:s:?", "-c:s", "srt"
         ]
 
-    def _h265_light(self, params: Optional[dict] = None) -> list[str]:
+    def _hevc_nvenc_light(self, params: Optional[dict] = None) -> list[str]:
         p = params or {}
         cq = p.get("cq", 30)
         return [
@@ -189,7 +199,7 @@ class FFmpegWrapper:
             "-map", "0:s:?", "-c:s", "srt"
         ]
 
-    def _h265_mp4(self, params: Optional[dict] = None) -> list[str]:
+    def _hevc_nvenc_mp4(self, params: Optional[dict] = None) -> list[str]:
         p = params or {}
         cq = p.get("cq", 20)
         return [
@@ -200,14 +210,90 @@ class FFmpegWrapper:
             "-map", "-0:s"
         ]
 
-    def _h265_stabilize(self, params: Optional[dict] = None) -> list[str]:
+    def _h264_qsv_standard(self, params: Optional[dict] = None) -> list[str]:
         p = params or {}
         cq = p.get("cq", 20)
-        smoothing = p.get("smoothing", 30)
         return [
-            "-vf", f"vidstabtransform=smoothing={smoothing}:format=yuv420p",
-            "-map", "0:0", "-c:v", "hevc_nvenc", "-rc", "vbr", "-cq", str(cq),
-            "-g", "250", "-tune", "hq", "-rc-lookahead", "60",
+            "-map", "0:0", "-c:v", "h264_qsv", "-q", str(cq),
+            "-look_ahead", "1", "-b_ref_mode", "middle",
+            "-vf", "format=yuv420p",
+            "-map", "0:a", "-c:a", "aac", "-ac", "2", "-b:a", "192k",
+            "-map", "0:s:?", "-c:s", "srt"
+        ]
+
+    def _h264_qsv_light(self, params: Optional[dict] = None) -> list[str]:
+        p = params or {}
+        cq = p.get("cq", 30)
+        return [
+            "-map", "0:0", "-c:v", "h264_qsv", "-q", str(cq),
+            "-look_ahead", "1", "-b_ref_mode", "middle",
+            "-vf", "scale=1920:-2,setsar=1:1,format=yuv420p",
+            "-map", "0:a", "-c:a", "aac", "-ac", "2", "-b:a", "192k",
+            "-map", "0:s:?", "-c:s", "srt"
+        ]
+
+    def _hevc_qsv_standard(self, params: Optional[dict] = None) -> list[str]:
+        p = params or {}
+        cq = p.get("cq", 20)
+        return [
+            "-map", "0:0", "-c:v", "hevc_qsv", "-q", str(cq),
+            "-look_ahead", "1", "-b_ref_mode", "middle",
+            "-vf", "format=yuv420p",
+            "-map", "0:a", "-c:a", "aac", "-ac", "2", "-b:a", "192k",
+            "-map", "0:s:?", "-c:s", "srt"
+        ]
+
+    def _hevc_qsv_light(self, params: Optional[dict] = None) -> list[str]:
+        p = params or {}
+        cq = p.get("cq", 30)
+        return [
+            "-map", "0:0", "-c:v", "hevc_qsv", "-q", str(cq),
+            "-look_ahead", "1", "-b_ref_mode", "middle",
+            "-vf", "scale=1920:-2,setsar=1:1,format=yuv420p",
+            "-map", "0:a", "-c:a", "aac", "-ac", "2", "-b:a", "192k",
+            "-map", "0:s:?", "-c:s", "srt"
+        ]
+
+    def _h264_amf_standard(self, params: Optional[dict] = None) -> list[str]:
+        p = params or {}
+        cq = p.get("cq", 20)
+        return [
+            "-map", "0:0", "-c:v", "h264_amf", "-quality", "quality", "-qp_i", str(cq), "-qp_p", str(cq),
+            "-g", "250",
+            "-vf", "format=yuv420p",
+            "-map", "0:a", "-c:a", "aac", "-ac", "2", "-b:a", "192k",
+            "-map", "0:s:?", "-c:s", "srt"
+        ]
+
+    def _h264_amf_light(self, params: Optional[dict] = None) -> list[str]:
+        p = params or {}
+        cq = p.get("cq", 30)
+        return [
+            "-map", "0:0", "-c:v", "h264_amf", "-quality", "speed", "-qp_i", str(cq), "-qp_p", str(cq),
+            "-g", "250",
+            "-vf", "scale=1920:-2,setsar=1:1,format=yuv420p",
+            "-map", "0:a", "-c:a", "aac", "-ac", "2", "-b:a", "192k",
+            "-map", "0:s:?", "-c:s", "srt"
+        ]
+
+    def _hevc_amf_standard(self, params: Optional[dict] = None) -> list[str]:
+        p = params or {}
+        cq = p.get("cq", 20)
+        return [
+            "-map", "0:0", "-c:v", "hevc_amf", "-quality", "quality", "-qp_i", str(cq), "-qp_p", str(cq),
+            "-g", "250",
+            "-vf", "format=yuv420p",
+            "-map", "0:a", "-c:a", "aac", "-ac", "2", "-b:a", "192k",
+            "-map", "0:s:?", "-c:s", "srt"
+        ]
+
+    def _hevc_amf_light(self, params: Optional[dict] = None) -> list[str]:
+        p = params or {}
+        cq = p.get("cq", 30)
+        return [
+            "-map", "0:0", "-c:v", "hevc_amf", "-quality", "speed", "-qp_i", str(cq), "-qp_p", str(cq),
+            "-g", "250",
+            "-vf", "scale=1920:-2,setsar=1:1,format=yuv420p",
             "-map", "0:a", "-c:a", "aac", "-ac", "2", "-b:a", "192k",
             "-map", "0:s:?", "-c:s", "srt"
         ]
