@@ -385,7 +385,7 @@ class ConverterApp(ctk.CTk):
     def _run_installation(self):
         """Установка FFmpeg в фоне"""
         def progress_callback(status: str, percent: float):
-            self.install_progress = percent
+            self.install_progress = percent / 100.0  # Convert to 0-1
             self.after(0, self._update_install_button)
         
         def on_complete(success: bool):
