@@ -61,10 +61,6 @@ class ConverterApp(ctk.CTk):
     def _initialize_ffmpeg_status(self):
         """Инициализация статуса FFmpeg"""
         self._check_ffmpeg_and_update()
-        
-        # Если FFmpeg установлен — проверяем обновления
-        if self.ffmpeg_available:
-            self._check_for_updates()
 
     def _check_ffmpeg(self) -> bool:
         """Проверка наличия FFmpeg в системе."""
@@ -101,10 +97,10 @@ class ConverterApp(ctk.CTk):
         
         # Скрываем баннер установки
         if hasattr(self, 'install_banner_frame'):
-            self.install_banner_frame.grid_forget()
+            self.install_banner_frame.grid_remove()
         
-        # Проверяем обновления
-        self._check_update_banner()
+        # Проверяем обновления (фоново, раз в 7 дней)
+        self._check_for_updates()
 
     def _show_ffmpeg_not_installed(self):
         """Показать что FFmpeg не установлен"""
@@ -118,6 +114,10 @@ class ConverterApp(ctk.CTk):
         # Показываем баннер установки
         if hasattr(self, 'install_banner_frame'):
             self.install_banner_frame.grid()
+        
+        # Скрываем баннер обновления если был показан
+        if hasattr(self, 'update_banner_frame'):
+            self.update_banner_frame.grid_remove()
 
     def _check_update_banner(self):
         """Проверить и показать баннер обновления"""
@@ -157,14 +157,14 @@ class ConverterApp(ctk.CTk):
         self.ffmpeg_status_label.grid(row=0, column=1, padx=20, pady=10, sticky="e")
 
         # ===== Баннер установки FFmpeg =====
-        self.install_banner_frame = ctk.CTkFrame(self, fg_color="#aa4400")
+        self.install_banner_frame = ctk.CTkFrame(self, fg_color="#d97706")
         self.install_banner_frame.grid(row=1, column=0, pady=5, padx=20, sticky="ew")
         self.install_banner_frame.grid_columnconfigure(0, weight=1)
         
         install_label = ctk.CTkLabel(
             self.install_banner_frame,
             text="⚠️  Для работы приложения необходим FFmpeg. Установите его для продолжения.",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(size=13, weight="bold"),
             text_color="white"
         )
         install_label.grid(row=0, column=0, padx=20, pady=15, sticky="w")
@@ -173,22 +173,24 @@ class ConverterApp(ctk.CTk):
             self.install_banner_frame,
             text="Установить FFmpeg",
             command=self._start_installation,
-            width=150,
-            height=35,
-            fg_color="white",
-            text_color="black"
+            width=160,
+            height=36,
+            fg_color="#15803d",
+            hover_color="#166534",
+            text_color="white",
+            font=ctk.CTkFont(size=13, weight="bold")
         )
         self.btn_install_banner.grid(row=0, column=1, padx=20, pady=15)
 
         # ===== Баннер обновления FFmpeg =====
-        self.update_banner_frame = ctk.CTkFrame(self, fg_color="#0066aa")
+        self.update_banner_frame = ctk.CTkFrame(self, fg_color="#0284c7")
         self.update_banner_frame.grid(row=1, column=0, pady=5, padx=20, sticky="ew")
         self.update_banner_frame.grid_columnconfigure(0, weight=1)
         
         update_label = ctk.CTkLabel(
             self.update_banner_frame,
             text="🔄 Доступна новая версия FFmpeg",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(size=13, weight="bold"),
             text_color="white"
         )
         update_label.grid(row=0, column=0, padx=20, pady=15, sticky="w")
@@ -201,19 +203,25 @@ class ConverterApp(ctk.CTk):
             text="Обновить",
             command=self._start_installation,
             width=100,
-            height=30,
-            fg_color="white",
-            text_color="black"
+            height=32,
+            fg_color="#15803d",
+            hover_color="#166534",
+            text_color="white",
+            font=ctk.CTkFont(size=13, weight="bold")
         ).pack(side="left", padx=5)
         
         ctk.CTkButton(
             update_btn_frame,
             text="✕",
             command=self._dismiss_update,
-            width=30,
-            height=30,
+            width=32,
+            height=32,
             fg_color="transparent",
-            border_width=1
+            hover_color="#dc2626",
+            text_color="white",
+            font=ctk.CTkFont(size=16, weight="bold"),
+            border_width=1,
+            border_color="white"
         ).pack(side="left", padx=5)
 
         # ===== Выбор папки =====
@@ -501,7 +509,10 @@ class ConverterApp(ctk.CTk):
             btn_frame,
             text="📁 Открыть папку",
             command=on_open_folder,
-            width=180
+            width=180,
+            fg_color="#2563eb",
+            hover_color="#1d4ed8",
+            text_color="white"
         ).pack(pady=5)
         
         ctk.CTkButton(
@@ -509,7 +520,9 @@ class ConverterApp(ctk.CTk):
             text="🔄 Проверить обновления",
             command=on_check_update,
             width=180,
-            fg_color="orange"
+            fg_color="#d97706",
+            hover_color="#b45309",
+            text_color="white"
         ).pack(pady=5)
         
         ctk.CTkButton(
@@ -517,7 +530,9 @@ class ConverterApp(ctk.CTk):
             text="🗑️ Удалить FFmpeg",
             command=on_uninstall,
             width=180,
-            fg_color="red"
+            fg_color="#dc2626",
+            hover_color="#b91c1c",
+            text_color="white"
         ).pack(pady=5)
         
         ctk.CTkButton(
@@ -526,7 +541,10 @@ class ConverterApp(ctk.CTk):
             command=dialog.destroy,
             width=180,
             fg_color="transparent",
-            border_width=1
+            border_width=1,
+            border_color="#4b5563",
+            text_color="white",
+            hover_color="#374151"
         ).pack(pady=5)
 
     def _manual_check_update(self):
