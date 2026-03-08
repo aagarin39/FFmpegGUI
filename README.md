@@ -6,11 +6,11 @@
 
 - **Групповая конвертация** — обработка всех файлов в выбранной папке
 - **Пресеты конвертации**:
-  - H.264 Стандарт/Лёгкий/MP4
-  - H.265 Стандарт/Лёгкий/MP4
-  - H.265 со стабилизацией
+  - **NVIDIA NVENC**: H.264/H.265 Стандарт/Лёгкий/MP4
+  - **Intel QuickSync**: H.264/H.265 Стандарт/Лёгкий
+  - **AMD AMF**: H.264/H.265 Стандарт/Лёгкий
 - **Конструктор пресетов** — создание собственных пресетов
-- **Автоматический подбор аудиопараметров** — на основе исходного файла
+- **Автоустановка FFmpeg** — загрузка с официального GitHub
 - **Прогресс-бар и логирование** — отслеживание процесса конвертации
 - **Кроссплатформенность** — Windows, Linux, macOS
 
@@ -19,7 +19,7 @@
 ### Требования
 
 - Python 3.9+
-- FFmpeg (встраивается в приложение)
+- FFmpeg (устанавливается автоматически или вручную)
 
 ### Шаги
 
@@ -32,7 +32,26 @@ cd FFmpegGUI
 pip install -r requirements.txt
 
 # Запуск приложения
-python src/main.py
+python src/main_ctk.py
+```
+
+### Автоустановка FFmpeg
+
+При первом запуске приложение предложит автоматически установить FFmpeg:
+- Скачивается с [GitHub Releases](https://github.com/BtbN/FFmpeg-Builds/releases)
+- Устанавливается в `%USERPROFILE%\FFmpegGUI\ffmpeg`
+- Добавляется в PATH пользователя
+- Не требует прав администратора
+
+Или установите вручную:
+```bash
+# Windows: скачайте с https://www.gyan.dev/ffmpeg/builds/
+# Linux:
+sudo apt install ffmpeg    # Debian/Ubuntu
+sudo dnf install ffmpeg    # Fedora
+
+# macOS:
+brew install ffmpeg
 ```
 
 ## Структура проекта
@@ -40,28 +59,45 @@ python src/main.py
 ```
 FFmpegGUI/
 ├── src/
-│   ├── main.py              # Точка входа и UI
-│   ├── core/
-│   │   ├── ffmpeg.py        # Обёртка для FFmpeg
-│   │   └── presets.py       # Управление пресетами
-│   └── ui/                  # UI компоненты
-├── ffmpeg/                  # Бинарники FFmpeg (опционально)
-├── assets/                  # Ресурсы приложения
-├── requirements.txt         # Зависимости Python
-└── pyproject.toml          # Конфигурация проекта
+│   ├── main_ctk.py          # Основное приложение (CustomTkinter)
+│   ├── main.py              # Старое приложение (Flet)
+│   └── core/
+│       ├── ffmpeg.py        # Обёртка для FFmpeg
+│       ├── presets.py       # Управление пресетами
+│       └── ffmpeg_installer.py  # Автоустановка FFmpeg
+├── build.py                 # Скрипт сборки PyInstaller
+├── requirements.txt         # Зависимости
+├── pyproject.toml          # Конфигурация проекта
+└── dist/                   # Скомпилированные файлы
 ```
 
 ## Пресеты по умолчанию
 
+### NVIDIA NVENC
 | Пресет | Описание |
 |--------|----------|
-| H.264 Стандарт | NVENC, CQ 20, MKV |
-| H.264 Лёгкий | NVENC, CQ 30, 1920x, MKV |
-| H.264 MP4 | NVENC, CQ 20, без субтитров |
-| H.265 Стандарт | HEVC NVENC, CQ 20, MKV |
-| H.265 Лёгкий | HEVC NVENC, CQ 30, 1920x, MKV |
-| H.265 MP4 | HEVC NVENC, CQ 20, без субтитров |
-| H.265 Стабилизация | HEVC NVENC + vidstab |
+| H.264 NVIDIA Стандарт | NVENC, CQ 20, MKV |
+| H.264 NVIDIA Лёгкий | NVENC, CQ 30, 1920x, MKV |
+| H.264 NVIDIA MP4 | NVENC, CQ 20, MP4, без субтитров |
+| H.265 NVIDIA Стандарт | HEVC NVENC, CQ 20, MKV |
+| H.265 NVIDIA Лёгкий | HEVC NVENC, CQ 30, 1920x, MKV |
+| H.265 NVIDIA MP4 | HEVC NVENC, CQ 20, MP4, без субтитров |
+
+### Intel QuickSync
+| Пресет | Описание |
+|--------|----------|
+| H.264 Intel Стандарт | QSV, CQ 20, MKV |
+| H.264 Intel Лёгкий | QSV, CQ 30, 1920x, MKV |
+| H.265 Intel Стандарт | HEVC QSV, CQ 20, MKV |
+| H.265 Intel Лёгкий | HEVC QSV, CQ 30, 1920x, MKV |
+
+### AMD AMF
+| Пресет | Описание |
+|--------|----------|
+| H.264 AMD Стандарт | AMF, CQ 20, MKV |
+| H.264 AMD Лёгкий | AMF, CQ 30, 1920x, MKV |
+| H.265 AMD Стандарт | HEVC AMF, CQ 20, MKV |
+| H.265 AMD Лёгкий | HEVC AMF, CQ 30, 1920x, MKV |
 
 ## Сборка дистрибутива
 
@@ -72,7 +108,7 @@ FFmpegGUI/
 pip install -r requirements.txt
 
 # Запуск приложения
-python src/main.py
+python src/main_ctk.py
 ```
 
 ### Создание нативного приложения

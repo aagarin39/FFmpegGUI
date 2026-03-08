@@ -9,7 +9,6 @@ import shutil
 from pathlib import Path
 import urllib.request
 import zipfile
-import threading
 
 
 class FFmpegInstaller:
@@ -61,81 +60,103 @@ class FFmpegInstaller:
         
         zip_path = temp_dir / "ffmpeg.zip"
         
+        print(f"Downloading from: {cls.FFMPEG_URL}")
+        print(f"To: {zip_path}")
+        
         def report_progress(block_num, block_size, total_size):
             if cls._cancel_flag:
                 raise Exception("Установка отменена пользователем")
+            downloaded = block_num * block_size
+            percent = min(100, (downloaded / total_size) * 100)
             if progress_callback:
-                downloaded = block_num * block_size
-                percent = min(100, (downloaded / total_size) * 100)
                 progress_callback(percent)
+            # Печатаем прогресс каждые 10%
+            if int(percent) % 10 == 0 and int(percent) > 0:
+                print(f"Download: {int(percent)}%")
         
-        urllib.request.urlretrieve(cls.FFMPEG_URL, zip_path, report_progress)
-        return zip_path
+        try:
+            urllib.request.urlretrieve(cls.FFMPEG_URL, zip_path, report_progress)
+            print(f"Download complete: {zip_path.exists()}")
+            return zip_path
+        except Exception as e:
+            print(f"Download error: {e}")
+            raise
     
     @classmethod
     def extract_ffmpeg(cls, zip_path: Path, dest_dir: Path, progress_callback=None):
         """Распаковать FFmpeg."""
+        print(f"Extracting to: {dest_dir}")
         dest_dir.mkdir(parents=True, exist_ok=True)
         
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            # Находим папку с бинарниками
-            members = zip_ref.namelist()
-            base_folder = None
-            for member in members:
-                if 'bin/ffmpeg.exe' in member or 'bin\\ffmpeg.exe' in member:
-                    # Получаем имя папки: ffmpeg-xxxx-win64-gpl
-                    base_folder = member.split('/')[0].replace('\\', '/')
-                    break
-            
-            if not base_folder:
-                raise Exception("Не удалось найти бинарники FFmpeg в архиве")
-            
-            print(f"Base folder: {base_folder}")
-            
-            # Распаковываем только bin папку
-            bin_folder = f"{base_folder}/bin/"
-            members_to_extract = [m for m in members if m.startswith(bin_folder)]
-            
-            print(f"Extracting {len(members_to_extract)} files from {bin_folder}")
-            
-            total = len(members_to_extract)
-            for i, member in enumerate(members_to_extract):
-                if cls._cancel_flag:
-                    raise Exception("Установка отменена пользователем")
+        try:
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                # Находим папку с бинарниками
+                members = zip_ref.namelist()
+                print(f"Archive contains {len(members)} files")
                 
-                # Извлекаем файлы из bin/ прямо в dest_dir
-                # ffmpeg-xxxx/bin/ffmpeg.exe -> dest_dir/ffmpeg.exe
-                relative_path = member.replace(bin_folder, '')
-                dest_path = dest_dir / relative_path
+                base_folder = None
+                for member in members:
+                    if 'bin/ffmpeg.exe' in member or 'bin\\ffmpeg.exe' in member:
+                        base_folder = member.split('/')[0].replace('\\', '/')
+                        break
                 
-                print(f"Extracting {member} -> {dest_path}")
+                if not base_folder:
+                    raise Exception("Не удалось найти бинарники FFmpeg в архиве")
                 
-                # Извлекаем
-                with zip_ref.open(member) as source:
-                    with open(dest_path, 'wb') as target:
-                        target.write(source.read())
+                print(f"Base folder: {base_folder}")
                 
-                if progress_callback:
-                    progress_callback((i / total) * 100)
-            
-            print(f"Extraction complete. Files in {dest_dir}:")
-            for f in dest_dir.iterdir():
-                print(f"  {f.name}")
+                # Распаковываем только bin папку
+                bin_folder = f"{base_folder}/bin/"
+                members_to_extract = [m for m in members if m.startswith(bin_folder)]
+                
+                print(f"Extracting {len(members_to_extract)} files from {bin_folder}")
+                
+                total = len(members_to_extract)
+                for i, member in enumerate(members_to_extract):
+                    if cls._cancel_flag:
+                        raise Exception("Установка отменена пользователем")
+                    
+                    # Извлекаем файлы из bin/ прямо в dest_dir
+                    relative_path = member.replace(bin_folder, '')
+                    dest_path = dest_dir / relative_path
+                    
+                    print(f"  Extracting: {member} -> {dest_path}")
+                    
+                    # Извлекаем
+                    with zip_ref.open(member) as source:
+                        with open(dest_path, 'wb') as target:
+                            target.write(source.read())
+                    
+                    if progress_callback:
+                        progress_callback((i / total) * 100)
+                
+                print(f"Extraction complete")
+                
+        except Exception as e:
+            print(f"Extraction error: {e}")
+            raise
     
     @classmethod
     def add_to_path(cls) -> bool:
         """Добавить FFmpeg в PATH пользователя."""
         try:
             bin_path = str(cls.INSTALL_DIR)
+            print(f"Adding to PATH: {bin_path}")
             
             # Добавляем в PATH пользователя через setx
             cmd = f'setx PATH "%PATH%;{bin_path}"'
-            subprocess.run(cmd, shell=True, check=True)
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
             
-            return True
+            if result.returncode == 0:
+                print("Successfully added to PATH")
+                return True
+            else:
+                print(f"setx error: {result.stderr}")
+                return True  # Всё равно продолжаем, FFmpeg будет работать и без PATH
+                
         except Exception as e:
-            print(f"Ошибка добавления в PATH: {e}")
-            return False
+            print(f"PATH error: {e}")
+            return True  # Не критично
     
     @classmethod
     def install(cls, progress_callback=None) -> bool:
@@ -144,28 +165,31 @@ class FFmpegInstaller:
         Возвращает True если установка успешна.
         """
         cls.reset_cancel_flag()
+        print("=" * 50)
+        print("Starting FFmpeg installation")
+        print("=" * 50)
         
         try:
             # Создаём директорию установки
+            print(f"Creating directory: {cls.INSTALL_DIR}")
             cls.INSTALL_DIR.mkdir(exist_ok=True, parents=True)
-            print(f"Install directory: {cls.INSTALL_DIR}")
             
             # Скачиваем
             if progress_callback:
                 progress_callback("Скачивание FFmpeg...", 0)
-            print(f"Downloading from: {cls.FFMPEG_URL}")
             
             def download_progress(p):
                 if progress_callback:
                     progress_callback("Скачивание...", p)
             
             zip_path = cls.download_ffmpeg(download_progress)
-            print(f"Downloaded to: {zip_path}")
+            
+            if cls._cancel_flag:
+                raise Exception("Установка отменена пользователем")
             
             # Распаковываем
             if progress_callback:
                 progress_callback("Распаковка...", 0)
-            print(f"Extracting to: {cls.INSTALL_DIR}")
             
             def extract_progress(p):
                 if progress_callback:
@@ -173,24 +197,32 @@ class FFmpegInstaller:
             
             cls.extract_ffmpeg(zip_path, cls.INSTALL_DIR, extract_progress)
             
+            if cls._cancel_flag:
+                raise Exception("Установка отменена пользователем")
+            
             # Проверяем что файл существует
             ffmpeg_exe = cls.INSTALL_DIR / "ffmpeg.exe"
             if not ffmpeg_exe.exists():
                 raise Exception(f"ffmpeg.exe не найден в {cls.INSTALL_DIR}")
-            print(f"FFmpeg installed: {ffmpeg_exe}")
+            print(f"✓ FFmpeg installed: {ffmpeg_exe}")
+            print(f"  Size: {ffmpeg_exe.stat().st_size} bytes")
             
             # Очищаем временные файлы
             zip_path.unlink()
+            print(f"Cleaned up: {zip_path}")
             
             # Добавляем в PATH
             if progress_callback:
                 progress_callback("Добавление в PATH...", 100)
             cls.add_to_path()
             
+            print("=" * 50)
+            print("Installation complete!")
+            print("=" * 50)
             return True
             
         except Exception as e:
-            print(f"Ошибка установки: {e}")
+            print(f"Installation error: {e}")
             import traceback
             traceback.print_exc()
             return False
