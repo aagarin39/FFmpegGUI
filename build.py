@@ -28,33 +28,25 @@ def build_windows():
     """Сборка под Windows (.exe)."""
     print("\n=== Сборка под Windows ===")
     
-    # Создаём spec файл
     spec_content = """
 # -*- mode: python ; coding: utf-8 -*-
 
 block_cipher = None
 
 a = Analysis(
-    ['src/main.py'],
+    ['src/main_ctk.py'],
     pathex=[],
     binaries=[],
     datas=[
         ('assets', 'assets'),
     ],
     hiddenimports=[
-        'flet',
-        'flet.core',
-        'flet.core.page',
-        'flet.core.control',
-        'flet.core.controls',
-        'flet.core.app',
-        'flet.controls',
-        'flet.controls.material',
-        'flet.controls.services',
-        'flet.controls.services.file_picker',
+        'customtkinter',
+        'PIL',
+        'PIL.Image',
+        'darkdetect',
         'pydantic',
         'pydantic_core',
-        'pydantic.dataclasses',
     ],
     hookspath=[],
     hooksconfig={},
@@ -89,13 +81,13 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=None,
+    onefile=True,
 )
 """
     
     with open('ffmpeggui.spec', 'w', encoding='utf-8') as f:
         f.write(spec_content)
     
-    # Запускаем PyInstaller
     run_command([sys.executable, '-m', 'PyInstaller', 'ffmpeggui.spec', '--clean'])
     
     print("\n[OK] Windows сборка завершена!")
@@ -103,36 +95,28 @@ exe = EXE(
 
 
 def build_linux():
-    """Сборка под Linux (AppImage/.deb)."""
+    """Сборка под Linux."""
     print("\n=== Сборка под Linux ===")
     
-    # Создаём spec файл для Linux
     spec_content = """
 # -*- mode: python ; coding: utf-8 -*-
 
 block_cipher = None
 
 a = Analysis(
-    ['src/main.py'],
+    ['src/main_ctk.py'],
     pathex=[],
     binaries=[],
     datas=[
         ('assets', 'assets'),
     ],
     hiddenimports=[
-        'flet',
-        'flet.core',
-        'flet.core.page',
-        'flet.core.control',
-        'flet.core.controls',
-        'flet.core.app',
-        'flet.controls',
-        'flet.controls.material',
-        'flet.controls.services',
-        'flet.controls.services.file_picker',
+        'customtkinter',
+        'PIL',
+        'PIL.Image',
+        'darkdetect',
         'pydantic',
         'pydantic_core',
-        'pydantic.dataclasses',
     ],
     hookspath=[],
     hooksconfig={},
@@ -165,6 +149,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=None,
+    onefile=True,
 )
 """
     
@@ -175,19 +160,6 @@ exe = EXE(
     
     print("\n[OK] Linux сборка завершена!")
     print(f"  Бинарник: dist/FFmpegConverter")
-    
-    # Создаём .desktop файл
-    desktop_content = """[Desktop Entry]
-Name=FFmpeg Converter
-Comment=Кроссплатформенный конвертер видео
-Exec=FFmpegConverter
-Icon=ffmpegconverter
-Type=Application
-Categories=AudioVideo;Video;
-"""
-    
-    Path('dist/ffmpegconverter.desktop').write_text(desktop_content)
-    print(f"  Desktop файл: dist/ffmpegconverter.desktop")
 
 
 def build_macos():
@@ -200,26 +172,19 @@ def build_macos():
 block_cipher = None
 
 a = Analysis(
-    ['src/main.py'],
+    ['src/main_ctk.py'],
     pathex=[],
     binaries=[],
     datas=[
         ('assets', 'assets'),
     ],
     hiddenimports=[
-        'flet',
-        'flet.core',
-        'flet.core.page',
-        'flet.core.control',
-        'flet.core.controls',
-        'flet.core.app',
-        'flet.controls',
-        'flet.controls.material',
-        'flet.controls.services',
-        'flet.controls.services.file_picker',
+        'customtkinter',
+        'PIL',
+        'PIL.Image',
+        'darkdetect',
         'pydantic',
         'pydantic_core',
-        'pydantic.dataclasses',
     ],
     hookspath=[],
     hooksconfig={},
@@ -275,22 +240,18 @@ def create_readme_dist():
 2. Распакуйте ffmpeg.exe и ffprobe.exe в папку с приложением
 
 ### Linux
-```bash
 sudo apt install ffmpeg  # Debian/Ubuntu
 sudo dnf install ffmpeg  # Fedora
 sudo pacman -S ffmpeg    # Arch
-```
 
 ### macOS
-```bash
 brew install ffmpeg
-```
 
 ## Запуск
 
-- **Windows**: Дважды кликните на FFmpegConverter.exe
-- **Linux**: ./FFmpegConverter
-- **macOS**: Откройте FFmpegConverter.app
+- Windows: Дважды кликните на FFmpegConverter.exe
+- Linux: ./FFmpegConverter
+- macOS: Откройте FFmpegConverter.app
 
 ## Лицензия
 MIT
@@ -305,7 +266,6 @@ def main():
     print(f"Сборка FFmpegGUI для {system}")
     print("=" * 50)
     
-    # Создаём папку dist
     Path('dist').mkdir(exist_ok=True)
     
     if system == 'Windows':
@@ -318,7 +278,6 @@ def main():
         print(f"Неподдерживаемая ОС: {system}")
         sys.exit(1)
     
-    # Создаём README для дистрибутива
     create_readme_dist()
     
     print("\n" + "=" * 50)

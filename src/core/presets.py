@@ -132,6 +132,9 @@ class PresetManager:
     def get_preset(self, preset_id: str) -> Optional[Preset]:
         return next((p for p in self.presets if p.id == preset_id), None)
 
+    def get_preset_by_name(self, name: str) -> Optional[Preset]:
+        return next((p for p in self.presets if p.name == name), None)
+
     def add_preset(self, preset: Preset):
         self.presets.append(preset)
         self.save_custom_presets()
