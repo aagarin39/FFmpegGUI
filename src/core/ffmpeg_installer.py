@@ -137,28 +137,6 @@ class FFmpegInstaller:
             raise
     
     @classmethod
-    def add_to_path(cls) -> bool:
-        """Добавить FFmpeg в PATH пользователя."""
-        try:
-            bin_path = str(cls.INSTALL_DIR)
-            print(f"Adding to PATH: {bin_path}")
-            
-            # Добавляем в PATH пользователя через setx
-            cmd = f'setx PATH "%PATH%;{bin_path}"'
-            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-            
-            if result.returncode == 0:
-                print("Successfully added to PATH")
-                return True
-            else:
-                print(f"setx error: {result.stderr}")
-                return True  # Всё равно продолжаем, FFmpeg будет работать и без PATH
-                
-        except Exception as e:
-            print(f"PATH error: {e}")
-            return True  # Не критично
-    
-    @classmethod
     def install(cls, progress_callback=None) -> bool:
         """
         Установить FFmpeg.
@@ -210,11 +188,6 @@ class FFmpegInstaller:
             # Очищаем временные файлы
             zip_path.unlink()
             print(f"Cleaned up: {zip_path}")
-            
-            # Добавляем в PATH
-            if progress_callback:
-                progress_callback("Добавление в PATH...", 100)
-            cls.add_to_path()
             
             print("=" * 50)
             print("Installation complete!")

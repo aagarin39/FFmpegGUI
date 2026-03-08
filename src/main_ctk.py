@@ -120,8 +120,8 @@ class ConverterApp(ctk.CTk):
 
 Вы можете установить его автоматически:
 • FFmpeg будет загружен с официального GitHub-репозитория
-• Установлен в папку пользователя: %USERPROFILE%\\FFmpegGUI\\ffmpeg
-• Добавлен в PATH пользователя
+• Установлен в папку: %USERPROFILE%\\FFmpegGUI\\ffmpeg
+• Приложение найдёт его автоматически
 
 Не требуются права администратора."""
         
@@ -177,8 +177,8 @@ class ConverterApp(ctk.CTk):
         # Ссылка на ручной вариант
         manual_text = """Или установите вручную:
 1. Скачайте с https://github.com/BtbN/FFmpeg-Builds/releases
-2. Распакуйте в удобное место
-3. Добавьте папку bin в системный PATH"""
+2. Распакуйте ffmpeg.exe в папку:
+   %USERPROFILE%\\FFmpegGUI\\ffmpeg"""
         
         ctk.CTkLabel(
             main_frame,
@@ -201,7 +201,7 @@ class ConverterApp(ctk.CTk):
             if success:
                 self.after(0, lambda: messagebox.showinfo(
                     "Успех",
-                    "FFmpeg успешно установлен!\n\nPATH обновлён.\n\nДля применения изменений рекомендуется перезапустить приложение."
+                    "FFmpeg успешно установлен!\n\nПриложение автоматически найдёт его в папке:\n%USERPROFILE%\\FFmpegGUI\\ffmpeg"
                 ))
                 self.after(0, lambda: self.btn_install.configure(state="normal"))
                 self.after(0, lambda: self.btn_cancel.configure(state="normal", text="Отмена"))
