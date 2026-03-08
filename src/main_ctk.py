@@ -36,6 +36,7 @@ class ConverterApp(ctk.CTk):
 
         self.title("FFmpeg Converter")
         self.geometry("1000x700")
+        self.minsize(800, 600)  # Минимальный размер
 
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
@@ -44,6 +45,7 @@ class ConverterApp(ctk.CTk):
         self.ffmpeg_available = False
         self.ffmpeg_version = ""
         self.is_installing = False
+        self.install_progress = 0
         self.has_update = False
         
         self.ffmpeg = FFmpegWrapper()
@@ -133,8 +135,15 @@ class ConverterApp(ctk.CTk):
     # ========== Создание виджетов ==========
     
     def create_widgets(self):
+        # Настройка масштабирования
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(3, weight=1)
+        self.grid_rowconfigure(0, weight=0)  # Header
+        self.grid_rowconfigure(1, weight=0)  # Banner
+        self.grid_rowconfigure(2, weight=0)  # Folder
+        self.grid_rowconfigure(3, weight=0)  # Preset
+        self.grid_rowconfigure(4, weight=1)  # Files (растягивается)
+        self.grid_rowconfigure(5, weight=0)  # Progress
+        self.grid_rowconfigure(6, weight=0)  # Log
 
         # ===== Заголовок =====
         header_frame = ctk.CTkFrame(self)
@@ -344,63 +353,57 @@ class ConverterApp(ctk.CTk):
             return
         
         self.is_installing = True
-        self.btn_install_banner.configure(state="disabled", text="Установка...")
+        self.install_progress = 0
+        
+        # Обновляем кнопку с прогрессом
+        self._update_install_button()
         
         # Скрываем баннер обновления если есть
         if hasattr(self, 'update_banner_frame'):
             self.update_banner_frame.grid_remove()
         
-        # Показываем прогресс на баннере установки
-        self.install_progress_bar = ctk.CTkProgressBar(self.install_banner_frame)
-        self.install_progress_bar.grid(row=0, column=1, padx=20, pady=15)
-        self.install_progress_bar.set(0)
-        
-        self.install_status_label = ctk.CTkLabel(
-            self.install_banner_frame,
-            text="Подготовка...",
-            text_color="white"
-        )
-        self.install_status_label.grid(row=0, column=2, padx=20, pady=15)
-        
         # Запускаем установку в потоке
         thread = threading.Thread(target=self._run_installation, daemon=True)
         thread.start()
+    
+    def _update_install_button(self):
+        """Обновить кнопку установки с прогрессом"""
+        if self.is_installing:
+            percent = int(self.install_progress * 100)
+            self.btn_install_banner.configure(
+                text=f"⏳ Установка... {percent}%",
+                fg_color="#059669",  # Зелёный с прогрессом
+                state="disabled"
+            )
+        else:
+            self.btn_install_banner.configure(
+                text="Установить FFmpeg",
+                fg_color="#15803d",
+                state="normal"
+            )
 
     def _run_installation(self):
         """Установка FFmpeg в фоне"""
         def progress_callback(status: str, percent: float):
-            self.after(0, lambda: self.install_status_label.configure(text=status))
-            self.after(0, lambda: self.install_progress_bar.set(percent / 100))
+            self.install_progress = percent
+            self.after(0, self._update_install_button)
         
         def on_complete(success: bool):
             self.is_installing = False
             
-            # Удаляем временные виджеты
-            if hasattr(self, 'install_progress_bar'):
-                self.install_progress_bar.destroy()
-            if hasattr(self, 'install_status_label'):
-                self.install_status_label.destroy()
-            
             if success:
-                self.btn_install_banner.configure(
+                self.after(0, lambda: self.btn_install_banner.configure(
                     text="✓ Установлено",
                     fg_color="green",
                     state="disabled"
-                )
+                ))
                 # Обновляем статус через 2 секунды
                 self.after(2000, self._after_install_success)
             else:
-                self.btn_install_banner.configure(
+                self.after(0, lambda: self.btn_install_banner.configure(
                     text="Установить снова",
-                    fg_color="white",
-                    text_color="black",
+                    fg_color="#dc2626",  # Красный
                     state="normal"
-                )
-                self.after(0, lambda: messagebox.showerror(
-                    "Ошибка",
-                    "Не удалось установить FFmpeg.\n\n"
-                    "Проверьте подключение к интернету и попробуйте снова.\n\n"
-                    "Лог: %USERPROFILE%\\FFmpegGUI\\install.log"
                 ))
         
         success = FFmpegInstaller.install(progress_callback)
