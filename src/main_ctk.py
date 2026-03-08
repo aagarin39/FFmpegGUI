@@ -379,8 +379,11 @@ class ConverterApp(ctk.CTk):
         dialog.transient(self)
         dialog.grab_set()
         
-        # Прокручиваемый контент
-        scroll_frame = ctk.CTkScrollableFrame(dialog)
+        # Прокручиваемый контент с тем же фоном как диалог
+        scroll_frame = ctk.CTkScrollableFrame(
+            dialog,
+            fg_color="transparent"  # Прозрачный фон чтобы совпадал с диалогом
+        )
         scroll_frame.pack(fill="both", expand=True, padx=20, pady=20)
         scroll_frame.grid_columnconfigure(0, weight=1)
         
