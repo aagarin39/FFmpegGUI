@@ -14,13 +14,20 @@ import zipfile
 class FFmpegInstaller:
     """Установщик FFmpeg для Windows."""
     
-    # Официальный источник для Windows (рекомендован ffmpeg.org)
-    # Используем GitHub Releases - более надёжно
-    FFMPEG_URL = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+    # Текущий URL для загрузки (устанавливается при запуске)
+    FFMPEG_URL = ""
     
-    # Альтернативные зеркала
+    # Официальные источники FFmpeg (рекомендованные ffmpeg.org)
+    # Порядок: от наиболее надёжного к наименее
     MIRROR_URLS = [
+        # GitHub Releases (BtbN) - наиболее надёжный
         "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip",
+        # GitHub Releases (по версии)
+        "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.0.1-win64-gpl.zip",
+        # gyan.dev - рекомендован ffmpeg.org
+        "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
+        # Альтернативный URL gyan.dev
+        "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip",
     ]
     
     # Установка в папку пользователя (не требует прав администратора)
@@ -60,27 +67,36 @@ class FFmpegInstaller:
     
     @classmethod
     def download_ffmpeg(cls, progress_callback=None) -> Path:
-        """Скачать FFmpeg с повторными попытками."""
+        """Скачать FFmpeg с перебором зеркал и повторными попытками."""
         temp_dir = Path(tempfile.gettempdir()) / "ffmpeggui_install"
         temp_dir.mkdir(exist_ok=True)
         
         zip_path = temp_dir / "ffmpeg.zip"
         
-        # Пробуем несколько раз
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                print(f"Download attempt {attempt + 1}/{max_retries}")
-                return cls._download_with_progress(zip_path, progress_callback)
-            except Exception as e:
-                print(f"Attempt {attempt + 1} failed: {e}")
-                if attempt == max_retries - 1:
-                    raise Exception(f"Не удалось загрузить FFmpeg после {max_retries} попыток: {e}")
-                # Ждём перед следующей попыткой
-                import time
-                time.sleep(2)
+        # Перебираем зеркала
+        for mirror_idx, base_url in enumerate(cls.MIRROR_URLS):
+            print(f"\nTrying mirror {mirror_idx + 1}/{len(cls.MIRROR_URLS)}: {base_url}")
+            cls.FFMPEG_URL = base_url
+            
+            # Пробуем несколько раз на каждом зеркале
+            max_retries = 2
+            for attempt in range(max_retries):
+                try:
+                    print(f"  Download attempt {attempt + 1}/{max_retries}")
+                    return cls._download_with_progress(zip_path, progress_callback)
+                except Exception as e:
+                    print(f"  Attempt {attempt + 1} failed: {e}")
+                    # Очищаем неудачный файл
+                    if zip_path.exists():
+                        zip_path.unlink()
+                    if attempt == max_retries - 1:
+                        print(f"  Mirror {mirror_idx + 1} failed, trying next...")
+                    else:
+                        import time
+                        time.sleep(2)
+                    continue
         
-        raise Exception("Не удалось загрузить FFmpeg")
+        raise Exception("Не удалось загрузить FFmpeg ни с одного зеркала")
     
     @classmethod
     def _download_with_progress(cls, zip_path: Path, progress_callback=None) -> Path:
@@ -134,28 +150,40 @@ class FFmpegInstaller:
     @classmethod
     def extract_ffmpeg(cls, zip_path: Path, dest_dir: Path, progress_callback=None):
         """Распаковать FFmpeg."""
-        print(f"Extracting to: {dest_dir}")
+        print(f"Extracting archive: {zip_path}")
+        print(f"Archive size: {zip_path.stat().st_size / (1024*1024):.1f} MB")
         dest_dir.mkdir(parents=True, exist_ok=True)
         
         try:
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                # Находим папку с бинарниками
+                # Проверяем содержимое архива
                 members = zip_ref.namelist()
                 print(f"Archive contains {len(members)} files")
                 
+                # Ищем ffmpeg.exe в любой папке bin
                 base_folder = None
-                for member in members:
-                    if 'bin/ffmpeg.exe' in member or 'bin\\ffmpeg.exe' in member:
-                        base_folder = member.split('/')[0].replace('\\', '/')
-                        break
+                bin_folder = None
                 
-                if not base_folder:
-                    raise Exception("Не удалось найти бинарники FFmpeg в архиве")
+                for member in members:
+                    member_normalized = member.replace('\\', '/')
+                    if 'bin/ffmpeg.exe' in member_normalized or 'bin\\ffmpeg.exe' in member:
+                        parts = member_normalized.split('/')
+                        if len(parts) > 1:
+                            base_folder = parts[0]
+                            bin_folder = f"{base_folder}/bin/"
+                            break
                 
                 print(f"Base folder: {base_folder}")
+                print(f"Bin folder: {bin_folder}")
+                
+                if not base_folder:
+                    # Выводим первые 10 файлов для отладки
+                    print("First 10 files in archive:")
+                    for m in members[:10]:
+                        print(f"  {m}")
+                    raise Exception("Не удалось найти bin/ffmpeg.exe в архиве")
                 
                 # Распаковываем только bin папку
-                bin_folder = f"{base_folder}/bin/"
                 members_to_extract = [m for m in members if m.startswith(bin_folder)]
                 
                 print(f"Extracting {len(members_to_extract)} files from {bin_folder}")
@@ -166,7 +194,7 @@ class FFmpegInstaller:
                         raise Exception("Установка отменена пользователем")
                     
                     # Извлекаем файлы из bin/ прямо в dest_dir
-                    relative_path = member.replace(bin_folder, '')
+                    relative_path = member.replace(bin_folder, '').replace('\\', '/')
                     dest_path = dest_dir / relative_path
                     
                     print(f"  Extracting: {member} -> {dest_path}")
@@ -180,7 +208,13 @@ class FFmpegInstaller:
                         progress_callback((i / total) * 100)
                 
                 print(f"Extraction complete")
+                print(f"Files in {dest_dir}:")
+                for f in dest_dir.iterdir():
+                    print(f"  {f.name} ({f.stat().st_size / (1024*1024):.1f} MB)")
                 
+        except zipfile.BadZipFile as e:
+            print(f"Bad zip file: {e}")
+            raise Exception("Архив повреждён. Попробуйте другое зеркало.")
         except Exception as e:
             print(f"Extraction error: {e}")
             raise
