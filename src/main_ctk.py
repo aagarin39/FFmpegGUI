@@ -1,10 +1,11 @@
 import customtkinter as ctk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog
 from pathlib import Path
 import threading
 import subprocess
 import sys
 import shutil
+import datetime
 
 # Импорт для работы в скомпилированном приложении
 if getattr(sys, 'frozen', False):
@@ -89,6 +90,33 @@ class ConverterApp(ctk.CTk):
         else:
             self._show_ffmpeg_not_installed()
 
+    def _add_log_entry(self, message: str):
+        """Добавить запись в лог операций"""
+        if hasattr(self, 'log_text'):
+            self.log_text.configure(state="normal")
+            timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+            self.log_text.insert("end", f"[{timestamp}] {message}\n")
+            self.log_text.see("end")
+            self.log_text.configure(state="disabled")
+
+    def _delete_ffmpeg_no_confirm(self, dialog):
+        """Удалить FFmpeg без подтверждения"""
+        success = FFmpegInstaller.uninstall()
+        if success:
+            self.lbl_status.configure(
+                text="✓ FFmpeg успешно удалён",
+                text_color="green"
+            )
+            self._add_log_entry("FFmpeg успешно удалён")
+            dialog.destroy()
+            self._check_ffmpeg_and_update()
+        else:
+            self.lbl_status.configure(
+                text="✗ Не удалось удалить FFmpeg",
+                text_color="red"
+            )
+            self._add_log_entry("Ошибка: Не удалось удалить FFmpeg")
+
     def _show_ffmpeg_installed(self):
         """Показать что FFmpeg установлен"""
         self.ffmpeg_status_label.configure(
@@ -144,6 +172,7 @@ class ConverterApp(ctk.CTk):
         self.grid_rowconfigure(4, weight=1)  # Files (растягивается)
         self.grid_rowconfigure(5, weight=0)  # Progress
         self.grid_rowconfigure(6, weight=0)  # Log
+        self.grid_rowconfigure(7, weight=0)  # Confirmation (для удаления FFmpeg)
 
         # ===== Заголовок =====
         header_frame = ctk.CTkFrame(self)
@@ -414,12 +443,12 @@ class ConverterApp(ctk.CTk):
         self._check_ffmpeg_and_update()
         self.btn_install_banner.configure(state="normal")
         
-        messagebox.showinfo(
-            "Готово",
-            "FFmpeg успешно установлен!\n\n"
-            f"Версия: {FFmpegInstaller.get_ffmpeg_version()}\n"
-            f"Теперь можно конвертировать файлы."
+        # Обновляем статус вместо messagebox
+        self.lbl_status.configure(
+            text=f"✓ FFmpeg успешно установлен! Версия: {FFmpegInstaller.get_ffmpeg_version()}",
+            text_color="green"
         )
+        self._add_log_entry(f"FFmpeg успешно установлен. Версия: {FFmpegInstaller.get_ffmpeg_version()}")
 
     def _dismiss_update(self):
         """Скрыть баннер обновления"""
@@ -504,7 +533,7 @@ class ConverterApp(ctk.CTk):
         ctk.CTkButton(
             main_frame,
             text="🗑️ Удалить FFmpeg",
-            command=lambda: self._uninstall_ffmpeg(dialog),
+            command=lambda: self._delete_ffmpeg_no_confirm(dialog),
             height=44,
             fg_color="#dc2626",
             hover_color="#b91c1c",
@@ -527,38 +556,6 @@ class ConverterApp(ctk.CTk):
             hover_color="#374151",
             font=ctk.CTkFont(size=14)
         ).pack(pady=(0, 10))
-        
-        ctk.CTkButton(
-            btn_frame,
-            text="🔄 Проверить обновления",
-            command=on_check_update,
-            width=180,
-            fg_color="#d97706",
-            hover_color="#b45309",
-            text_color="white"
-        ).pack(pady=5)
-        
-        ctk.CTkButton(
-            btn_frame,
-            text="🗑️ Удалить FFmpeg",
-            command=on_uninstall,
-            width=180,
-            fg_color="#dc2626",
-            hover_color="#b91c1c",
-            text_color="white"
-        ).pack(pady=5)
-        
-        ctk.CTkButton(
-            btn_frame,
-            text="Закрыть",
-            command=self.context_menu.destroy,
-            width=180,
-            fg_color="transparent",
-            border_width=1,
-            border_color="#4b5563",
-            text_color="white",
-            hover_color="#374151"
-        ).pack(pady=5)
 
     def _manual_check_update(self, dialog):
         """Ручная проверка обновлений"""
@@ -621,39 +618,62 @@ class ConverterApp(ctk.CTk):
     
     def _uninstall_ffmpeg(self, dialog):
         """Удалить FFmpeg"""
-        result = messagebox.askyesno(
-            "Удаление FFmpeg",
-            "⚠️ FFmpeg будет удалён.\nПриложение не сможет работать без FFmpeg.\n\nПродолжить?",
-            icon=messagebox.WARNING
+        # Вместо messagebox.askyesno используем статусную панель для подтверждения
+        self.lbl_status.configure(
+            text="⚠️ Подтвердите удаление FFmpeg (приложение не сможет работать без него)",
+            text_color="orange"
         )
-        if result:
+        
+        # Добавляем кнопки подтверждения в статусную панель
+        confirm_frame = ctk.CTkFrame(self)
+        confirm_frame.grid(row=7, column=0, pady=5, padx=20, sticky="ew")
+        
+        def confirm_uninstall():
             success = FFmpegInstaller.uninstall()
             if success:
-                messagebox.showinfo("Удалено", "FFmpeg успешно удалён")
+                self.lbl_status.configure(
+                    text="✓ FFmpeg успешно удалён",
+                    text_color="green"
+                )
+                self._add_log_entry("FFmpeg успешно удалён")
                 dialog.destroy()
                 self._check_ffmpeg_and_update()
             else:
-                messagebox.showerror("Ошибка", "Не удалось удалить FFmpeg")
-        check_label.pack(pady=5)
+                self.lbl_status.configure(
+                    text="✗ Не удалось удалить FFmpeg",
+                    text_color="red"
+                )
+                self._add_log_entry("Ошибка: Не удалось удалить FFmpeg")
+            
+            confirm_frame.grid_remove()
         
-        def check_thread():
-            try:
-                update_info = FFmpegUpdater.check_for_update()
-                
-                # Удаляем индикатор и показываем результат
-                self.after(0, lambda: [
-                    check_frame.destroy(),
-                    self._show_update_result(update_info, btn_frame)
-                ])
-            except Exception as e:
-                self.after(0, lambda: [
-                    check_frame.destroy(),
-                    self._show_update_error(str(e), btn_frame)
-                ])
+        def cancel_uninstall():
+            self.lbl_status.configure(
+                text="Удаление отменено",
+                text_color="gray"
+            )
+            confirm_frame.grid_remove()
         
-        thread = threading.Thread(target=check_thread, daemon=True)
-        thread.start()
-    
+        ctk.CTkButton(
+            confirm_frame,
+            text="Удалить",
+            command=confirm_uninstall,
+            width=100,
+            fg_color="#dc2626",
+            hover_color="#b91c1c",
+            text_color="white"
+        ).pack(side="left", padx=5)
+        
+        ctk.CTkButton(
+            confirm_frame,
+            text="Отмена",
+            command=cancel_uninstall,
+            width=100,
+            fg_color="#64748b",
+            hover_color="#475569",
+            text_color="white"
+        ).pack(side="left", padx=5)
+
     def _on_preset_change(self, value):
         if not value:
             return
@@ -705,19 +725,27 @@ class ConverterApp(ctk.CTk):
 
     def start_conversion(self):
         if not self.ffmpeg_available:
-            messagebox.showerror(
-                "Ошибка",
-                "FFmpeg не найден!\n\n"
-                "Установите FFmpeg для продолжения."
+            self.lbl_status.configure(
+                text="✗ FFmpeg не найден! Установите FFmpeg для продолжения.",
+                text_color="red"
             )
+            self._add_log_entry("Ошибка: FFmpeg не найден")
             return
             
         if not self.selected_folder or not self.files_list:
-            messagebox.showwarning("Внимание", "Выберите папку с файлами!")
+            self.lbl_status.configure(
+                text="⚠️ Выберите папку с файлами!",
+                text_color="orange"
+            )
+            self._add_log_entry("Предупреждение: Папка с файлами не выбрана")
             return
             
         if not self.selected_preset:
-            messagebox.showwarning("Внимание", "Выберите пресет конвертации!")
+            self.lbl_status.configure(
+                text="⚠️ Выберите пресет конвертации!",
+                text_color="orange"
+            )
+            self._add_log_entry("Предупреждение: Пресет конвертации не выбран")
             return
 
         self.is_converting = True
