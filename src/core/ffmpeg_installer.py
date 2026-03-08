@@ -14,8 +14,9 @@ import zipfile
 class FFmpegInstaller:
     """Установщик FFmpeg для Windows."""
     
-    # Официальный GitHub релиз от BtbN (зеркало ffmpeg.org)
-    FFMPEG_URL = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+    # Официальный источник для Windows (рекомендован ffmpeg.org)
+    # https://www.gyan.dev/ffmpeg/builds/
+    FFMPEG_URL = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
     
     # Установка в папку пользователя (не требует прав администратора)
     INSTALL_DIR = Path.home() / "FFmpegGUI" / "ffmpeg"
