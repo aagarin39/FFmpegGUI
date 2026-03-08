@@ -9,6 +9,7 @@ import shutil
 from pathlib import Path
 import urllib.request
 import zipfile
+import threading
 
 
 class FFmpegInstaller:
@@ -19,6 +20,8 @@ class FFmpegInstaller:
     
     # Установка в папку пользователя (не требует прав администратора)
     INSTALL_DIR = Path.home() / "FFmpegGUI" / "ffmpeg"
+    
+    _cancel_flag = False
     
     @classmethod
     def is_installed(cls) -> bool:
@@ -41,6 +44,16 @@ class FFmpegInstaller:
         return None
     
     @classmethod
+    def cancel_installation(cls):
+        """Отменить установку."""
+        cls._cancel_flag = True
+    
+    @classmethod
+    def reset_cancel_flag(cls):
+        """Сбросить флаг отмены."""
+        cls._cancel_flag = False
+    
+    @classmethod
     def download_ffmpeg(cls, progress_callback=None) -> Path:
         """Скачать FFmpeg."""
         temp_dir = Path(tempfile.gettempdir()) / "ffmpeggui_install"
@@ -49,6 +62,8 @@ class FFmpegInstaller:
         zip_path = temp_dir / "ffmpeg.zip"
         
         def report_progress(block_num, block_size, total_size):
+            if cls._cancel_flag:
+                raise Exception("Установка отменена пользователем")
             if progress_callback:
                 downloaded = block_num * block_size
                 percent = min(100, (downloaded / total_size) * 100)
@@ -60,6 +75,8 @@ class FFmpegInstaller:
     @classmethod
     def extract_ffmpeg(cls, zip_path: Path, dest_dir: Path, progress_callback=None):
         """Распаковать FFmpeg."""
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             # Находим папку с бинарниками
             members = zip_ref.namelist()
@@ -78,7 +95,21 @@ class FFmpegInstaller:
             
             total = len(members_to_extract)
             for i, member in enumerate(members_to_extract):
-                zip_ref.extract(member, dest_dir)
+                if cls._cancel_flag:
+                    raise Exception("Установка отменена пользователем")
+                
+                # Извлекаем файлы из bin/ прямо в dest_dir
+                relative_path = member.replace(bin_folder, '')
+                dest_path = dest_dir / relative_path
+                
+                # Создаём директорию если нужно
+                dest_path.parent.mkdir(parents=True, exist_ok=True)
+                
+                # Извлекаем
+                with zip_ref.open(member) as source:
+                    with open(dest_path, 'wb') as target:
+                        target.write(source.read())
+                
                 if progress_callback:
                     progress_callback((i / total) * 100)
     
@@ -103,6 +134,8 @@ class FFmpegInstaller:
         Установить FFmpeg.
         Возвращает True если установка успешна.
         """
+        cls.reset_cancel_flag()
+        
         try:
             # Создаём директорию установки
             cls.INSTALL_DIR.mkdir(exist_ok=True, parents=True)

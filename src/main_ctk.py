@@ -127,7 +127,8 @@ class ConverterApp(ctk.CTk):
         
         def on_install():
             self.btn_install.configure(state="disabled")
-            self.btn_cancel.configure(state="disabled")
+            self.btn_cancel.configure(text="Отмена установки")
+            self.btn_cancel.configure(state="normal")
             self._run_installation()
         
         self.btn_install = ctk.CTkButton(
@@ -139,12 +140,18 @@ class ConverterApp(ctk.CTk):
         )
         self.btn_install.pack(side="left", padx=10)
         
+        def on_cancel():
+            FFmpegInstaller.cancel_installation()
+            self.install_status.configure(text="Отмена установки...")
+            self.btn_cancel.configure(state="disabled")
+        
         self.btn_cancel = ctk.CTkButton(
             btn_frame,
             text="Отмена",
-            command=lambda: dialog.destroy(),
+            command=on_cancel,
             width=150,
-            height=35
+            height=35,
+            state="disabled"
         )
         self.btn_cancel.pack(side="left", padx=10)
         
@@ -175,19 +182,38 @@ class ConverterApp(ctk.CTk):
             if success:
                 self.after(0, lambda: messagebox.showinfo(
                     "Успех",
-                    "FFmpeg успешно установлен!\n\nПерезапустите приложение для применения изменений."
-                ))
-                self.after(0, lambda: self.quit())
-            else:
-                self.after(0, lambda: messagebox.showerror(
-                    "Ошибка",
-                    "Не удалось установить FFmpeg.\nПопробуйте установить вручную."
+                    "FFmpeg успешно установлен!\n\nPATH обновлён.\n\nДля применения изменений рекомендуется перезапустить приложение."
                 ))
                 self.after(0, lambda: self.btn_install.configure(state="normal"))
-                self.after(0, lambda: self.btn_cancel.configure(state="normal"))
+                self.after(0, lambda: self.btn_cancel.configure(state="normal", text="Отмена"))
+                self.after(0, lambda: self._check_ffmpeg_and_update())
+            else:
+                if FFmpegInstaller._cancel_flag:
+                    self.after(0, lambda: messagebox.showinfo(
+                        "Отменено",
+                        "Установка отменена пользователем."
+                    ))
+                else:
+                    self.after(0, lambda: messagebox.showerror(
+                        "Ошибка",
+                        "Не удалось установить FFmpeg.\nПопробуйте установить вручную."
+                    ))
+                self.after(0, lambda: self.btn_install.configure(state="normal"))
+                self.after(0, lambda: self.btn_cancel.configure(state="normal", text="Отмена"))
         
         thread = threading.Thread(target=install_thread, daemon=True)
         thread.start()
+    
+    def _check_ffmpeg_and_update(self):
+        """Проверить FFmpeg и обновить интерфейс."""
+        self.ffmpeg_available = self._check_ffmpeg()
+        self.ffmpeg_status_label.configure(
+            text="✓ FFmpeg найден" if self.ffmpeg_available else "✗ FFmpeg не найден",
+            text_color="green" if self.ffmpeg_available else "red"
+        )
+        # Скрыть кнопку установки если FFmpeg найден
+        if hasattr(self, 'btn_install_ffmpeg') and self.ffmpeg_available:
+            self.btn_install_ffmpeg.destroy()
 
     def create_widgets(self):
         self.grid_columnconfigure(0, weight=1)
