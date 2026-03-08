@@ -4,13 +4,21 @@ from pathlib import Path
 import threading
 import asyncio
 import sys
+import shutil
 
-try:
-    from .core.ffmpeg import FFmpegWrapper
-    from .core.presets import PresetManager, Preset
-except ImportError:
-    from core.ffmpeg import FFmpegWrapper
-    from core.presets import PresetManager, Preset
+# Импорт для работы в скомпилированном приложении
+if getattr(sys, 'frozen', False):
+    # Запуск из exe
+    from src.core.ffmpeg import FFmpegWrapper
+    from src.core.presets import PresetManager, Preset
+else:
+    # Запуск из исходников
+    try:
+        from .core.ffmpeg import FFmpegWrapper
+        from .core.presets import PresetManager, Preset
+    except ImportError:
+        from core.ffmpeg import FFmpegWrapper
+        from core.presets import PresetManager, Preset
 
 
 class ConverterApp(ctk.CTk):
@@ -23,6 +31,9 @@ class ConverterApp(ctk.CTk):
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
 
+        # Проверка наличия FFmpeg
+        self.ffmpeg_available = self._check_ffmpeg()
+        
         self.ffmpeg = FFmpegWrapper()
         self.preset_manager = PresetManager()
 
@@ -32,6 +43,65 @@ class ConverterApp(ctk.CTk):
         self.is_converting = False
 
         self.create_widgets()
+        
+        # Показать предупреждение если FFmpeg не найден
+        if not self.ffmpeg_available:
+            self._show_ffmpeg_warning()
+
+    def _check_ffmpeg(self) -> bool:
+        """Проверка наличия FFmpeg в системе."""
+        # Проверяем в PATH
+        if shutil.which("ffmpeg"):
+            return True
+        
+        # Проверяем локальную папку ffmpeg
+        local_ffmpeg = Path(__file__).parent.parent / "ffmpeg"
+        if local_ffmpeg.exists():
+            if sys.platform == "win32":
+                return (local_ffmpeg / "ffmpeg.exe").exists()
+            else:
+                return (local_ffmpeg / "ffmpeg").exists()
+        
+        return False
+
+    def _show_ffmpeg_warning(self):
+        """Показать предупреждение об отсутствии FFmpeg."""
+        warning_window = ctk.CTkToplevel(self)
+        warning_window.title("Внимание: FFmpeg не найден")
+        warning_window.geometry("500x300")
+        warning_window.transient(self)
+        
+        text = """FFmpeg не найден в системе!
+
+Для работы приложения необходимо установить FFmpeg:
+
+1. Windows:
+   - Скачайте с: https://www.gyan.dev/ffmpeg/builds/
+   - Распакуйте ffmpeg.exe и ffprobe.exe в папку ffmpeg/ рядом с приложением
+   - ИЛИ добавьте в системный PATH
+
+2. Linux:
+   sudo apt install ffmpeg    # Debian/Ubuntu
+   sudo dnf install ffmpeg    # Fedora
+   sudo pacman -S ffmpeg      # Arch
+
+3. macOS:
+   brew install ffmpeg
+
+После установки перезапустите приложение.
+"""
+        
+        ctk.CTkLabel(
+            warning_window,
+            text=text,
+            justify="left"
+        ).pack(padx=20, pady=20, fill="both", expand=True)
+        
+        ctk.CTkButton(
+            warning_window,
+            text="Закрыть",
+            command=warning_window.destroy
+        ).pack(pady=10)
 
     def create_widgets(self):
         self.grid_columnconfigure(0, weight=1)
@@ -42,7 +112,19 @@ class ConverterApp(ctk.CTk):
             text="FFmpeg Converter",
             font=ctk.CTkFont(size=24, weight="bold")
         )
-        title.grid(row=0, column=0, pady=20, padx=20)
+        title.grid(row=0, column=0, pady=10, padx=20)
+        
+        # Индикатор статуса FFmpeg
+        ffmpeg_status_frame = ctk.CTkFrame(self)
+        ffmpeg_status_frame.grid(row=0, column=0, sticky="ne", padx=20, pady=10)
+        
+        self.ffmpeg_status_label = ctk.CTkLabel(
+            ffmpeg_status_frame,
+            text="✓ FFmpeg найден" if self.ffmpeg_available else "✗ FFmpeg не найден",
+            text_color="green" if self.ffmpeg_available else "red",
+            font=ctk.CTkFont(size=11)
+        )
+        self.ffmpeg_status_label.pack(padx=10, pady=5)
 
         folder_frame = ctk.CTkFrame(self)
         folder_frame.grid(row=1, column=0, pady=10, padx=20, sticky="ew")
