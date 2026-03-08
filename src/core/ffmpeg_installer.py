@@ -226,11 +226,28 @@ class FFmpegInstaller:
         Возвращает True если установка успешна.
         """
         cls.reset_cancel_flag()
-        print("=" * 50)
-        print("Starting FFmpeg installation")
-        print("=" * 50)
+        
+        # Открываем лог файл
+        log_file = Path.home() / "FFmpegGUI" / "install.log"
+        log_file.parent.mkdir(exist_ok=True)
+        
+        import sys
+        from io import StringIO
+        
+        # Перехватываем вывод
+        log_buffer = StringIO()
+        old_stdout = sys.stdout
+        sys.stdout = log_buffer
         
         try:
+            print("=" * 60)
+            print("FFmpeg Installation Log")
+            print("=" * 60)
+            print(f"Time: {__import__('datetime').datetime.now()}")
+            print(f"Install dir: {cls.INSTALL_DIR}")
+            print(f"Mirrors: {len(cls.MIRROR_URLS)}")
+            print()
+            
             # Создаём директорию установки
             print(f"Creating directory: {cls.INSTALL_DIR}")
             cls.INSTALL_DIR.mkdir(exist_ok=True, parents=True)
@@ -265,20 +282,36 @@ class FFmpegInstaller:
             ffmpeg_exe = cls.INSTALL_DIR / "ffmpeg.exe"
             if not ffmpeg_exe.exists():
                 raise Exception(f"ffmpeg.exe не найден в {cls.INSTALL_DIR}")
-            print(f"✓ FFmpeg installed: {ffmpeg_exe}")
+            
+            print(f"\n✓ FFmpeg installed: {ffmpeg_exe}")
             print(f"  Size: {ffmpeg_exe.stat().st_size} bytes")
             
             # Очищаем временные файлы
             zip_path.unlink()
             print(f"Cleaned up: {zip_path}")
             
-            print("=" * 50)
+            print("=" * 60)
             print("Installation complete!")
-            print("=" * 50)
+            print("=" * 60)
+            
+            # Сохраняем лог
+            log_content = log_buffer.getvalue()
+            with open(log_file, 'w', encoding='utf-8') as f:
+                f.write(log_content)
+            
             return True
             
         except Exception as e:
-            print(f"Installation error: {e}")
+            error_msg = f"Installation error: {e}"
+            print(error_msg)
             import traceback
-            traceback.print_exc()
+            traceback.print_exc(file=log_buffer)
+            
+            # Сохраняем лог ошибки
+            log_content = log_buffer.getvalue()
+            with open(log_file, 'w', encoding='utf-8') as f:
+                f.write(log_content)
+            
             return False
+        finally:
+            sys.stdout = old_stdout

@@ -208,9 +208,13 @@ class ConverterApp(ctk.CTk):
                         "Установка отменена пользователем."
                     ))
                 else:
+                    error_msg = "Не удалось установить FFmpeg.\n\n"
+                    error_msg += "Проверьте лог файл:\n"
+                    error_msg += "%USERPROFILE%\\FFmpegGUI\\install.log\n\n"
+                    error_msg += "Попробуйте установить вручную."
                     self.after(0, lambda: messagebox.showerror(
                         "Ошибка",
-                        "Не удалось установить FFmpeg.\nПопробуйте установить вручную."
+                        error_msg
                     ))
                 self.after(0, lambda: self.btn_install.configure(state="normal"))
                 self.after(0, lambda: self.btn_cancel.configure(state="normal", text="Отмена"))
