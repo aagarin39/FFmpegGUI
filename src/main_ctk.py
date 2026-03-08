@@ -346,6 +346,8 @@ class ConverterApp(ctk.CTk):
             self.lbl_file_count.configure(text=f"Файлов: {len(self.files_list)}")
 
     def on_preset_change(self, value):
+        if not value:
+            return
         preset = self.preset_manager.get_preset_by_name(value)
         if preset:
             self.selected_preset = preset
@@ -410,26 +412,36 @@ class ConverterApp(ctk.CTk):
         container_combo.grid(row=13, column=0, padx=20, pady=5, sticky="ew")
 
         def save_preset():
-            name = name_entry.get()
-            desc = desc_entry.get()
+            name = name_entry.get().strip()
+            if not name:
+                messagebox.showwarning("Внимание", "Введите название пресета!")
+                return
+            
+            desc = desc_entry.get().strip()
             cq = int(cq_entry.get()) if cq_entry.get().isdigit() else 20
+            codec = codec_var.get()
+            scale = scale_var.get() if scale_var.get() else None
+            remove_subs = remove_subs_var.get()
+            stabilize = stabilize_var.get()
+            container = container_var.get()
 
             new_preset = Preset(
                 id=f"custom_{name.lower().replace(' ', '_')}",
                 name=name,
                 description=desc,
-                video_codec=codec_var.get(),
+                video_codec=codec,
                 cq=cq,
-                scale=scale_var.get() if scale_var.get() else None,
-                remove_subtitles=remove_subs_var.get(),
-                stabilize=stabilize_var.get(),
-                container=container_var.get(),
+                scale=scale,
+                remove_subtitles=remove_subs,
+                stabilize=stabilize,
+                container=container,
             )
             self.preset_manager.add_preset(new_preset)
             
             current = list(self.cmb_preset.cget("values"))
             current.append(name)
             self.cmb_preset.configure(values=current)
+            self.cmb_preset.set(name)
             
             self.log_message(f"Пресет '{name}' сохранён!")
             dialog.destroy()
@@ -441,13 +453,24 @@ class ConverterApp(ctk.CTk):
         ctk.CTkButton(btn_frame, text="Сохранить", command=save_preset).pack(side="right", padx=5)
 
     def start_conversion(self):
-        if not self.selected_folder or not self.files_list or not self.selected_preset:
-            messagebox.showwarning("Внимание", "Выберите папку и пресет!")
+        if not self.ffmpeg_available:
+            messagebox.showerror("Ошибка", "FFmpeg не найден!\nУстановите FFmpeg перед конвертацией.")
+            return
+            
+        if not self.selected_folder or not self.files_list:
+            messagebox.showwarning("Внимание", "Выберите папку с файлами!")
+            return
+            
+        if not self.selected_preset:
+            messagebox.showwarning("Внимание", "Выберите пресет конвертации!")
             return
 
         self.is_converting = True
         self.btn_convert.configure(state="disabled")
+        self.btn_select_folder.configure(state="disabled")
+        self.cmb_preset.configure(state="disabled")
         self.progress_bar.set(0)
+        self.lbl_status.configure(text="Конвертация...", text_color="orange")
 
         thread = threading.Thread(target=self.run_conversion, daemon=True)
         thread.start()
@@ -492,6 +515,8 @@ class ConverterApp(ctk.CTk):
             loop.close()
             self.is_converting = False
             self.btn_convert.configure(state="normal")
+            self.btn_select_folder.configure(state="normal")
+            self.cmb_preset.configure(state="normal")
 
 
 if __name__ == "__main__":
