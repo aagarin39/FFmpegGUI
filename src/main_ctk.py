@@ -174,19 +174,38 @@ class ConverterApp(ctk.CTk):
         )
         self.btn_cancel.pack(side="left", padx=10)
         
-        # Ссылка на ручной вариант
-        manual_text = """Или установите вручную:
-1. Скачайте с https://github.com/BtbN/FFmpeg-Builds/releases
-2. Распакуйте ffmpeg.exe в папку:
-   %USERPROFILE%\\FFmpegGUI\\ffmpeg"""
+        # Ссылка на ручной вариант с кнопкой
+        manual_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+        manual_frame.pack(pady=10)
         
         ctk.CTkLabel(
-            main_frame,
-            text=manual_text,
+            manual_frame,
+            text="Или скачайте вручную:",
             justify="left",
             text_color="gray",
             font=ctk.CTkFont(size=11)
-        ).pack(pady=10)
+        ).pack(anchor="w")
+        
+        def open_download():
+            import webbrowser
+            webbrowser.open("https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip")
+        
+        ctk.CTkButton(
+            manual_frame,
+            text="Открыть ссылку для скачивания",
+            command=open_download,
+            width=250,
+            height=30,
+            fg_color="gray"
+        ).pack(pady=5)
+        
+        ctk.CTkLabel(
+            manual_frame,
+            text="Распакуйте ffmpeg.exe в: %USERPROFILE%\\FFmpegGUI\\ffmpeg",
+            justify="left",
+            text_color="gray",
+            font=ctk.CTkFont(size=10)
+        ).pack(anchor="w")
     
     def _run_installation(self):
         """Запуск установки FFmpeg."""
