@@ -531,13 +531,42 @@ class ConverterApp(ctk.CTk):
 
     def _manual_check_update(self):
         """Ручная проверка обновлений"""
-        messagebox.showinfo(
-            "Проверка обновлений",
-            "Проверка обновлений...\n\n"
-            "Подождите."
-        )
+        # Создаём диалог проверки
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Проверка обновлений")
+        dialog.geometry("400x200")
+        dialog.transient(self)
+        dialog.grab_set()
         
-        update_info = FFmpegUpdater.check_for_update()
+        ctk.CTkLabel(
+            dialog,
+            text="Проверка обновлений...",
+            font=ctk.CTkFont(size=16, weight="bold")
+        ).pack(pady=20)
+        
+        progress_bar = ctk.CTkProgressBar(dialog, mode="indeterminate")
+        progress_bar.pack(pady=20, padx=40, fill="x")
+        progress_bar.start()
+        
+        status_label = ctk.CTkLabel(dialog, text="Соединение с GitHub...")
+        status_label.pack(pady=10)
+        
+        def check_thread():
+            try:
+                dialog.after(0, lambda: status_label.configure(text="Запрос информации..."))
+                
+                update_info = FFmpegUpdater.check_for_update()
+                
+                dialog.after(0, lambda: self._show_check_result(update_info, dialog))
+            except Exception as e:
+                dialog.after(0, lambda: self._show_check_error(str(e), dialog))
+        
+        thread = threading.Thread(target=check_thread, daemon=True)
+        thread.start()
+    
+    def _show_check_result(self, update_info, dialog):
+        """Показать результат проверки"""
+        dialog.destroy()
         
         if update_info:
             result = messagebox.askyesno(
@@ -552,8 +581,18 @@ class ConverterApp(ctk.CTk):
         else:
             messagebox.showinfo(
                 "Обновления",
-                "Установлена последняя версия FFmpeg."
+                "✓ Установлена последняя версия FFmpeg."
             )
+    
+    def _show_check_error(self, error_msg, dialog):
+        """Показать ошибку проверки"""
+        dialog.destroy()
+        messagebox.showerror(
+            "Ошибка",
+            f"Не удалось проверить обновления.\n\n"
+            f"Ошибка: {error_msg}\n\n"
+            "Проверьте подключение к интернету."
+        )
 
     # ========== Остальные методы ==========
     
