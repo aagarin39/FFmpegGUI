@@ -480,12 +480,7 @@ class ConverterApp(ctk.CTk):
         ).pack(anchor="w", padx=20, pady=(0,15))
         
         # Статус обновлений
-        self.update_status_label = ctk.CTkLabel(
-            main_frame,
-            text="",
-            font=ctk.CTkFont(size=12),
-            wraplength=440
-        )
+        self.update_status_label = ctk.CTkLabel(main_frame, text="", font=ctk.CTkFont(size=12), wraplength=440)
         self.update_status_label.pack(pady=10)
         
         # Кнопки
@@ -500,16 +495,8 @@ class ConverterApp(ctk.CTk):
             font=ctk.CTkFont(size=14)
         ).pack(fill="x", pady=8)
         
-        self.btn_check_update = ctk.CTkButton(
-            main_frame,
-            text="🔄 Проверить обновления",
-            command=lambda: self._manual_check_update(dialog),
-            height=44,
-            fg_color="#d97706",
-            hover_color="#b45309",
-            text_color="white",
-            font=ctk.CTkFont(size=14)
-        ).pack(fill="x", pady=8)
+        self.btn_check_update = ctk.CTkButton(main_frame, text="🔄 Проверить обновления", command=lambda: self._manual_check_update(dialog), height=44, fg_color="#d97706", hover_color="#b45309", text_color="white", font=ctk.CTkFont(size=14))
+        self.btn_check_update.pack(fill="x", pady=8)
         
         ctk.CTkButton(
             main_frame,
