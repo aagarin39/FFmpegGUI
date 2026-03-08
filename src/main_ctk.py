@@ -301,6 +301,7 @@ class ConverterApp(ctk.CTk):
 
         self.progress_bar = ctk.CTkProgressBar(progress_frame)
         self.progress_bar.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
+        self.progress_bar.set(0)  # Сброс в 0
         progress_frame.grid_columnconfigure(1, weight=1)
 
         self.lbl_progress = ctk.CTkLabel(progress_frame, text="")
