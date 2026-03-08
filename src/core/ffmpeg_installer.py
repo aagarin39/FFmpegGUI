@@ -139,26 +139,36 @@ class FFmpegInstaller:
         try:
             # Создаём директорию установки
             cls.INSTALL_DIR.mkdir(exist_ok=True, parents=True)
+            print(f"Install directory: {cls.INSTALL_DIR}")
             
             # Скачиваем
             if progress_callback:
                 progress_callback("Скачивание FFmpeg...", 0)
+            print(f"Downloading from: {cls.FFMPEG_URL}")
             
             def download_progress(p):
                 if progress_callback:
                     progress_callback("Скачивание...", p)
             
             zip_path = cls.download_ffmpeg(download_progress)
+            print(f"Downloaded to: {zip_path}")
             
             # Распаковываем
             if progress_callback:
                 progress_callback("Распаковка...", 0)
+            print(f"Extracting to: {cls.INSTALL_DIR}")
             
             def extract_progress(p):
                 if progress_callback:
                     progress_callback("Распаковка...", p)
             
             cls.extract_ffmpeg(zip_path, cls.INSTALL_DIR, extract_progress)
+            
+            # Проверяем что файл существует
+            ffmpeg_exe = cls.INSTALL_DIR / "ffmpeg.exe"
+            if not ffmpeg_exe.exists():
+                raise Exception(f"ffmpeg.exe не найден в {cls.INSTALL_DIR}")
+            print(f"FFmpeg installed: {ffmpeg_exe}")
             
             # Очищаем временные файлы
             zip_path.unlink()
@@ -172,4 +182,6 @@ class FFmpegInstaller:
             
         except Exception as e:
             print(f"Ошибка установки: {e}")
+            import traceback
+            traceback.print_exc()
             return False

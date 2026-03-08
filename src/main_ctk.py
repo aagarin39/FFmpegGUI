@@ -59,21 +59,29 @@ class ConverterApp(ctk.CTk):
     def _check_ffmpeg(self) -> bool:
         """Проверка наличия FFmpeg в системе."""
         # Проверяем в PATH
-        if shutil.which("ffmpeg"):
+        ffmpeg_in_path = shutil.which("ffmpeg")
+        if ffmpeg_in_path:
+            print(f"FFmpeg found in PATH: {ffmpeg_in_path}")
             return True
         
         # Проверяем папку установки
         install_dir = Path.home() / "FFmpegGUI" / "ffmpeg"
-        if (install_dir / "ffmpeg.exe").exists():
+        ffmpeg_exe = install_dir / "ffmpeg.exe"
+        if ffmpeg_exe.exists():
+            print(f"FFmpeg found in install dir: {ffmpeg_exe}")
             return True
+        
+        print(f"FFmpeg not found. Checked: {install_dir}")
         
         # Проверяем локальную папку ffmpeg
         local_ffmpeg = Path(__file__).parent.parent / "ffmpeg"
         if local_ffmpeg.exists():
             if sys.platform == "win32":
-                return (local_ffmpeg / "ffmpeg.exe").exists()
+                if (local_ffmpeg / "ffmpeg.exe").exists():
+                    return True
             else:
-                return (local_ffmpeg / "ffmpeg").exists()
+                if (local_ffmpeg / "ffmpeg").exists():
+                    return True
         
         return False
 
