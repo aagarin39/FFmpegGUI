@@ -1,20 +1,19 @@
 import flet as ft
 from pathlib import Path
-import asyncio
 import sys
 
 # Импорт для работы в скомпилированном приложении
 if getattr(sys, 'frozen', False):
     # Запуск из exe
-    from src.core.ffmpeg import FFmpegWrapper, VideoInfo
+    from src.core.ffmpeg import FFmpegWrapper
     from src.core.presets import PresetManager, Preset
 else:
     # Запуск из исходников
     try:
-        from .core.ffmpeg import FFmpegWrapper, VideoInfo
+        from .core.ffmpeg import FFmpegWrapper
         from .core.presets import PresetManager, Preset
     except ImportError:
-        from core.ffmpeg import FFmpegWrapper, VideoInfo
+        from core.ffmpeg import FFmpegWrapper
         from core.presets import PresetManager, Preset
 
 

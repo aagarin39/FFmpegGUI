@@ -6,7 +6,6 @@ import json
 import time
 import urllib.request
 from pathlib import Path
-from datetime import datetime
 
 
 class FFmpegUpdater:
@@ -108,7 +107,7 @@ class FFmpegUpdater:
         if cls.CACHE_FILE.exists():
             try:
                 return json.loads(cls.CACHE_FILE.read_text(encoding='utf-8'))
-            except:
+            except (json.JSONDecodeError, IOError):
                 return None
         return None
     
@@ -124,7 +123,7 @@ class FFmpegUpdater:
         if cls.SETTINGS_FILE.exists():
             try:
                 return json.loads(cls.SETTINGS_FILE.read_text(encoding='utf-8'))
-            except:
+            except (json.JSONDecodeError, IOError):
                 return {}
         return {}
     

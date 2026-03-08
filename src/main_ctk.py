@@ -21,12 +21,12 @@ if getattr(sys, 'frozen', False):
 else:
     try:
         from .core.ffmpeg import FFmpegWrapper
-        from .core.presets import PresetManager, Preset
+        from .core.presets import PresetManager
         from .core.ffmpeg_installer import FFmpegInstaller
         from .core.ffmpeg_updater import FFmpegUpdater
     except ImportError:
         from core.ffmpeg import FFmpegWrapper
-        from core.presets import PresetManager, Preset
+        from core.presets import PresetManager
         from core.ffmpeg_installer import FFmpegInstaller
         from core.ffmpeg_updater import FFmpegUpdater
 
@@ -573,7 +573,8 @@ class ConverterApp(ctk.CTk):
                 update_info = FFmpegUpdater.check_for_update()
                 dialog.after(0, lambda: self._show_update_result(dialog, update_info))
             except Exception as e:
-                dialog.after(0, lambda: self._show_update_error(dialog, str(e)))
+                error_msg = str(e)
+                dialog.after(0, lambda: self._show_update_error(dialog, error_msg))
         
         threading.Thread(target=check_thread, daemon=True).start()
     

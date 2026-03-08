@@ -3,7 +3,6 @@
 """
 
 import sys
-import subprocess
 import tempfile
 import shutil
 from pathlib import Path
@@ -268,7 +267,7 @@ class FFmpegInstaller:
                     raise Exception("Не удалось найти bin/ffmpeg.exe в архиве")
                 
                 # Распаковываем только bin папку
-                members_to_extract = [m for m in members if m.startswith(bin_folder)]
+                members_to_extract = [m for m in members if bin_folder and m.startswith(bin_folder)]
                 
                 print(f"Extracting {len(members_to_extract)} files from {bin_folder}")
                 
@@ -283,7 +282,7 @@ class FFmpegInstaller:
                         continue
                     
                     # Извлекаем файлы из bin/ прямо в dest_dir
-                    relative_path = member.replace(bin_folder, '').replace('\\', '/')
+                    relative_path = member.replace(bin_folder or '', '').replace('\\', '/')
                     dest_path = dest_dir / relative_path
                     
                     print(f"  Extracting: {member} -> {dest_path}")
@@ -299,7 +298,7 @@ class FFmpegInstaller:
                     if progress_callback:
                         progress_callback((i / total) * 100)
                 
-                print(f"Extraction complete")
+                print("Extraction complete")
                 print(f"Files in {dest_dir}:")
                 for f in dest_dir.iterdir():
                     if f.is_file():
@@ -327,7 +326,6 @@ class FFmpegInstaller:
         # Ротация логов
         cls.rotate_logs()
         
-        import sys
         from io import StringIO
         
         # Перехватываем вывод
