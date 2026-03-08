@@ -166,7 +166,7 @@ class FFmpegInstaller:
                 
                 for member in members:
                     member_normalized = member.replace('\\', '/')
-                    if 'bin/ffmpeg.exe' in member_normalized or 'bin\\ffmpeg.exe' in member:
+                    if 'bin/ffmpeg.exe' in member_normalized:
                         parts = member_normalized.split('/')
                         if len(parts) > 1:
                             base_folder = parts[0]
@@ -193,11 +193,19 @@ class FFmpegInstaller:
                     if cls._cancel_flag:
                         raise Exception("Установка отменена пользователем")
                     
+                    # Пропускаем директории
+                    if member.endswith('/'):
+                        print(f"  Skipping directory: {member}")
+                        continue
+                    
                     # Извлекаем файлы из bin/ прямо в dest_dir
                     relative_path = member.replace(bin_folder, '').replace('\\', '/')
                     dest_path = dest_dir / relative_path
                     
                     print(f"  Extracting: {member} -> {dest_path}")
+                    
+                    # Создаём родительскую директорию если нужно
+                    dest_path.parent.mkdir(parents=True, exist_ok=True)
                     
                     # Извлекаем
                     with zip_ref.open(member) as source:
@@ -210,7 +218,8 @@ class FFmpegInstaller:
                 print(f"Extraction complete")
                 print(f"Files in {dest_dir}:")
                 for f in dest_dir.iterdir():
-                    print(f"  {f.name} ({f.stat().st_size / (1024*1024):.1f} MB)")
+                    if f.is_file():
+                        print(f"  {f.name} ({f.stat().st_size / (1024*1024):.1f} MB)")
                 
         except zipfile.BadZipFile as e:
             print(f"Bad zip file: {e}")
