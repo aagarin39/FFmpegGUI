@@ -73,13 +73,14 @@ class ConverterApp(ctk.CTk):
             print(f"FFmpeg found in install dir: {ffmpeg_exe}")
             return True
         
-        # Старая структура с подпапкой
-        for subfolder in install_dir.iterdir():
-            if subfolder.is_dir():
-                old_ffmpeg = subfolder / "bin" / "ffmpeg.exe"
-                if old_ffmpeg.exists():
-                    print(f"FFmpeg found in old structure: {old_ffmpeg}")
-                    return True
+        # Старая структура с подпапкой (если папка существует)
+        if install_dir.exists():
+            for subfolder in install_dir.iterdir():
+                if subfolder.is_dir():
+                    old_ffmpeg = subfolder / "bin" / "ffmpeg.exe"
+                    if old_ffmpeg.exists():
+                        print(f"FFmpeg found in old structure: {old_ffmpeg}")
+                        return True
         
         print(f"FFmpeg not found. Checked: {install_dir}")
         
