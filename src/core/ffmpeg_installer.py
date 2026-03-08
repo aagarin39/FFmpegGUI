@@ -15,8 +15,13 @@ class FFmpegInstaller:
     """Установщик FFmpeg для Windows."""
     
     # Официальный источник для Windows (рекомендован ffmpeg.org)
-    # https://www.gyan.dev/ffmpeg/builds/
-    FFMPEG_URL = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+    # Используем GitHub Releases - более надёжно
+    FFMPEG_URL = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+    
+    # Альтернативные зеркала
+    MIRROR_URLS = [
+        "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip",
+    ]
     
     # Установка в папку пользователя (не требует прав администратора)
     INSTALL_DIR = Path.home() / "FFmpegGUI" / "ffmpeg"
@@ -55,51 +60,75 @@ class FFmpegInstaller:
     
     @classmethod
     def download_ffmpeg(cls, progress_callback=None) -> Path:
-        """Скачать FFmpeg."""
+        """Скачать FFmpeg с повторными попытками."""
         temp_dir = Path(tempfile.gettempdir()) / "ffmpeggui_install"
         temp_dir.mkdir(exist_ok=True)
         
         zip_path = temp_dir / "ffmpeg.zip"
         
+        # Пробуем несколько раз
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                print(f"Download attempt {attempt + 1}/{max_retries}")
+                return cls._download_with_progress(zip_path, progress_callback)
+            except Exception as e:
+                print(f"Attempt {attempt + 1} failed: {e}")
+                if attempt == max_retries - 1:
+                    raise Exception(f"Не удалось загрузить FFmpeg после {max_retries} попыток: {e}")
+                # Ждём перед следующей попыткой
+                import time
+                time.sleep(2)
+        
+        raise Exception("Не удалось загрузить FFmpeg")
+    
+    @classmethod
+    def _download_with_progress(cls, zip_path: Path, progress_callback=None) -> Path:
+        """Загрузить файл с отображением прогресса."""
         print(f"Downloading from: {cls.FFMPEG_URL}")
-        print(f"To: {zip_path}")
         
         def report_progress(block_num, block_size, total_size):
             if cls._cancel_flag:
                 raise Exception("Установка отменена пользователем")
-            downloaded = block_num * block_size
-            percent = min(100, (downloaded / total_size) * 100)
-            if progress_callback:
-                progress_callback(percent)
+            if total_size > 0:
+                downloaded = block_num * block_size
+                percent = min(100, (downloaded / total_size) * 100)
+                if progress_callback:
+                    progress_callback(percent)
         
-        # Пробуем несколько методов загрузки
+        # Пробуем urllib
         try:
-            print("Method 1: urllib.request")
+            print("Using urllib.request...")
             urllib.request.urlretrieve(cls.FFMPEG_URL, zip_path, report_progress)
         except Exception as e1:
             print(f"urllib failed: {e1}")
+            # Пробуем requests если есть
             try:
-                print("Method 2: requests")
                 import requests
-                response = requests.get(cls.FFMPEG_URL, stream=True)
+                print("Using requests...")
+                response = requests.get(cls.FFMPEG_URL, stream=True, timeout=30)
+                response.raise_for_status()
                 total = int(response.headers.get('content-length', 0))
+                
                 with open(zip_path, 'wb') as f:
                     downloaded = 0
-                    for chunk in response.iter_content(chunk_size=8192):
+                    for chunk in response.iter_content(chunk_size=1024 * 1024):  # 1MB chunks
                         if cls._cancel_flag:
                             raise Exception("Установка отменена")
-                        f.write(chunk)
-                        downloaded += len(chunk)
-                        if progress_callback and total > 0:
-                            progress_callback((downloaded / total) * 100)
+                        if chunk:
+                            f.write(chunk)
+                            downloaded += len(chunk)
+                            if progress_callback and total > 0:
+                                progress_callback((downloaded / total) * 100)
             except Exception as e2:
                 print(f"requests failed: {e2}")
-                raise Exception(f"Не удалось загрузить FFmpeg: {e1}")
+                raise Exception(f"Не удалось загрузить: {e1}")
         
         if not zip_path.exists() or zip_path.stat().st_size == 0:
             raise Exception("Файл не загрузился или пустой")
         
-        print(f"Download complete: {zip_path.exists()}, size: {zip_path.stat().st_size}")
+        size_mb = zip_path.stat().st_size / (1024 * 1024)
+        print(f"Download complete: {size_mb:.1f} MB")
         return zip_path
     
     @classmethod
