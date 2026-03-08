@@ -371,67 +371,171 @@ class ConverterApp(ctk.CTk):
             self.lbl_preset_info.configure(text=preset.description)
 
     def open_preset_builder(self):
+        """Открыть конструктор пресетов."""
         dialog = ctk.CTkToplevel(self)
         dialog.title("Конструктор пресетов")
-        dialog.geometry("500x600")
+        dialog.geometry("550x680")
         dialog.transient(self)
-
-        dialog.grid_columnconfigure(0, weight=1)
-
-        ctk.CTkLabel(dialog, text="Название пресета:").grid(row=0, column=0, padx=20, pady=10, sticky="w")
-        name_entry = ctk.CTkEntry(dialog)
-        name_entry.grid(row=1, column=0, padx=20, pady=5, sticky="ew")
-
-        ctk.CTkLabel(dialog, text="Описание:").grid(row=2, column=0, padx=20, pady=10, sticky="w")
-        desc_entry = ctk.CTkEntry(dialog)
-        desc_entry.grid(row=3, column=0, padx=20, pady=5, sticky="ew")
-
-        ctk.CTkLabel(dialog, text="Видео кодек:").grid(row=4, column=0, padx=20, pady=10, sticky="w")
+        dialog.grab_set()
+        
+        # Прокручиваемый контент
+        scroll_frame = ctk.CTkScrollableFrame(dialog)
+        scroll_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        scroll_frame.grid_columnconfigure(0, weight=1)
+        
+        row = 0
+        
+        # Заголовок с описанием
+        ctk.CTkLabel(
+            scroll_frame,
+            text="Создание пользовательского пресета",
+            font=ctk.CTkFont(size=16, weight="bold")
+        ).grid(row=row, column=0, pady=(0, 15), sticky="w")
+        row += 1
+        
+        ctk.CTkLabel(
+            scroll_frame,
+            text="Настройте параметры конвертации и сохраните как новый пресет",
+            text_color="gray",
+            font=ctk.CTkFont(size=11),
+            justify="left"
+        ).grid(row=row, column=0, pady=(0, 20), sticky="w")
+        row += 1
+        
+        # Название пресета
+        ctk.CTkLabel(
+            scroll_frame,
+            text="Название пресета *",
+            font=ctk.CTkFont(weight="bold")
+        ).grid(row=row, column=0, sticky="w", pady=(10, 5))
+        row += 1
+        name_entry = ctk.CTkEntry(scroll_frame, placeholder_text="Например: Мой пресет")
+        name_entry.grid(row=row, column=0, padx=0, pady=5, sticky="ew")
+        row += 1
+        
+        # Описание
+        ctk.CTkLabel(
+            scroll_frame,
+            text="Описание",
+            font=ctk.CTkFont(weight="bold")
+        ).grid(row=row, column=0, sticky="w", pady=(10, 5))
+        row += 1
+        desc_entry = ctk.CTkEntry(scroll_frame, placeholder_text="Краткое описание пресета")
+        desc_entry.grid(row=row, column=0, padx=0, pady=5, sticky="ew")
+        row += 1
+        
+        # Видео кодек
+        ctk.CTkLabel(
+            scroll_frame,
+            text="Видео кодек",
+            font=ctk.CTkFont(weight="bold")
+        ).grid(row=row, column=0, sticky="w", pady=(10, 5))
+        row += 1
         codec_var = ctk.StringVar(value="h264_nvenc")
         codec_combo = ctk.CTkComboBox(
-            dialog,
+            scroll_frame,
             values=["h264_nvenc", "hevc_nvenc"],
-            variable=codec_var
+            variable=codec_var,
+            command=lambda x: None
         )
-        codec_combo.grid(row=5, column=0, padx=20, pady=5, sticky="ew")
-
-        ctk.CTkLabel(dialog, text="CQ (качество 1-51):").grid(row=6, column=0, padx=20, pady=10, sticky="w")
-        cq_entry = ctk.CTkEntry(dialog)
+        codec_combo.grid(row=row, column=0, padx=0, pady=5, sticky="ew")
+        ctk.CTkLabel(
+            scroll_frame,
+            text="h264_nvenc - быстрее, hevc_nvenc - лучше сжатие",
+            text_color="gray",
+            font=ctk.CTkFont(size=10)
+        ).grid(row=row+1, column=0, sticky="w", pady=(0, 10))
+        row += 2
+        
+        # CQ качество
+        ctk.CTkLabel(
+            scroll_frame,
+            text="CQ (качество 1-51)",
+            font=ctk.CTkFont(weight="bold")
+        ).grid(row=row, column=0, sticky="w", pady=(10, 5))
+        row += 1
+        cq_entry = ctk.CTkEntry(scroll_frame)
         cq_entry.insert(0, "20")
-        cq_entry.grid(row=7, column=0, padx=20, pady=5, sticky="ew")
-
-        ctk.CTkLabel(dialog, text="Масштабирование:").grid(row=8, column=0, padx=20, pady=10, sticky="w")
+        cq_entry.grid(row=row, column=0, padx=0, pady=5, sticky="ew")
+        ctk.CTkLabel(
+            scroll_frame,
+            text="Меньше = лучше качество, больше = меньше размер (18-28 оптимально)",
+            text_color="gray",
+            font=ctk.CTkFont(size=10)
+        ).grid(row=row+1, column=0, sticky="w", pady=(0, 10))
+        row += 2
+        
+        # Масштабирование
+        ctk.CTkLabel(
+            scroll_frame,
+            text="Масштабирование",
+            font=ctk.CTkFont(weight="bold")
+        ).grid(row=row, column=0, sticky="w", pady=(10, 5))
+        row += 1
         scale_var = ctk.StringVar(value="")
         scale_combo = ctk.CTkComboBox(
-            dialog,
+            scroll_frame,
             values=["", "1920:-2", "1280:-2", "3840:-2"],
-            variable=scale_var
+            variable=scale_var,
+            command=lambda x: None
         )
-        scale_combo.grid(row=9, column=0, padx=20, pady=5, sticky="ew")
-
-        remove_subs_var = ctk.BooleanVar()
-        ctk.CTkCheckBox(dialog, text="Удалить субтитры", variable=remove_subs_var).grid(
-            row=10, column=0, padx=20, pady=10, sticky="w"
-        )
-
-        stabilize_var = ctk.BooleanVar()
-        ctk.CTkCheckBox(dialog, text="Стабилизация", variable=stabilize_var).grid(
-            row=11, column=0, padx=20, pady=10, sticky="w"
-        )
-
-        ctk.CTkLabel(dialog, text="Контейнер:").grid(row=12, column=0, padx=20, pady=10, sticky="w")
+        scale_combo.grid(row=row, column=0, padx=0, pady=5, sticky="ew")
+        ctk.CTkLabel(
+            scroll_frame,
+            text="1920:-2 - Full HD, 1280:-2 - HD, 3840:-2 - 4K, пусто - без изменений",
+            text_color="gray",
+            font=ctk.CTkFont(size=10)
+        ).grid(row=row+1, column=0, sticky="w", pady=(0, 10))
+        row += 2
+        
+        # Чекбоксы
+        remove_subs_var = ctk.BooleanVar(value=False)
+        ctk.CTkCheckBox(
+            scroll_frame,
+            text="Удалить субтитры",
+            variable=remove_subs_var
+        ).grid(row=row, column=0, padx=0, pady=10, sticky="w")
+        row += 1
+        
+        stabilize_var = ctk.BooleanVar(value=False)
+        ctk.CTkCheckBox(
+            scroll_frame,
+            text="Стабилизация видео (медленнее, но убирает дрожание)",
+            variable=stabilize_var
+        ).grid(row=row, column=0, padx=0, pady=10, sticky="w")
+        row += 1
+        
+        # Контейнер
+        ctk.CTkLabel(
+            scroll_frame,
+            text="Контейнер",
+            font=ctk.CTkFont(weight="bold")
+        ).grid(row=row, column=0, sticky="w", pady=(10, 5))
+        row += 1
         container_var = ctk.StringVar(value="mkv")
         container_combo = ctk.CTkComboBox(
-            dialog,
+            scroll_frame,
             values=["mkv", "mp4"],
-            variable=container_var
+            variable=container_var,
+            command=lambda x: None
         )
-        container_combo.grid(row=13, column=0, padx=20, pady=5, sticky="ew")
-
+        container_combo.grid(row=row, column=0, padx=0, pady=5, sticky="ew")
+        ctk.CTkLabel(
+            scroll_frame,
+            text="MKV - универсальный, MP4 - лучшая совместимость",
+            text_color="gray",
+            font=ctk.CTkFont(size=10)
+        ).grid(row=row+1, column=0, sticky="w", pady=(0, 20))
+        row += 2
+        
+        # Кнопки
+        btn_frame = ctk.CTkFrame(scroll_frame)
+        btn_frame.grid(row=row, column=0, pady=20, sticky="e")
+        
         def save_preset():
             name = name_entry.get().strip()
             if not name:
-                messagebox.showwarning("Внимание", "Введите название пресета!")
+                messagebox.showwarning("Внимание", "Введите название пресета!", parent=dialog)
                 return
             
             desc = desc_entry.get().strip()
@@ -463,11 +567,20 @@ class ConverterApp(ctk.CTk):
             self.log_message(f"Пресет '{name}' сохранён!")
             dialog.destroy()
 
-        btn_frame = ctk.CTkFrame(dialog)
-        btn_frame.grid(row=14, column=0, padx=20, pady=20, sticky="e")
-
-        ctk.CTkButton(btn_frame, text="Отмена", command=lambda: dialog.destroy()).pack(side="right", padx=5)
-        ctk.CTkButton(btn_frame, text="Сохранить", command=save_preset).pack(side="right", padx=5)
+        ctk.CTkButton(
+            btn_frame,
+            text="Отмена",
+            command=lambda: dialog.destroy(),
+            width=120
+        ).pack(side="right", padx=5)
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="Сохранить",
+            command=save_preset,
+            width=120,
+            fg_color="green"
+        ).pack(side="right", padx=5)
 
     def start_conversion(self):
         if not self.ffmpeg_available:
