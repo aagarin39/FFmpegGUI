@@ -7,14 +7,26 @@ import sys
 import shutil
 import ctypes
 
-try:
-    from .core.ffmpeg import FFmpegWrapper
-    from .core.presets import PresetManager, Preset
-    from .core.ffmpeg_installer import FFmpegInstaller
-except ImportError:
-    from core.ffmpeg import FFmpegWrapper
-    from core.presets import PresetManager, Preset
-    from core.ffmpeg_installer import FFmpegInstaller
+# Импорт для работы в скомпилированном приложении
+if getattr(sys, 'frozen', False):
+    # Запуск из exe - используем абсолютные импорты
+    import src.core.ffmpeg
+    import src.core.presets
+    import src.core.ffmpeg_installer
+    FFmpegWrapper = src.core.ffmpeg.FFmpegWrapper
+    PresetManager = src.core.presets.PresetManager
+    Preset = src.core.presets.Preset
+    FFmpegInstaller = src.core.ffmpeg_installer.FFmpegInstaller
+else:
+    # Запуск из исходников
+    try:
+        from .core.ffmpeg import FFmpegWrapper
+        from .core.presets import PresetManager, Preset
+        from .core.ffmpeg_installer import FFmpegInstaller
+    except ImportError:
+        from core.ffmpeg import FFmpegWrapper
+        from core.presets import PresetManager, Preset
+        from core.ffmpeg_installer import FFmpegInstaller
 
 
 class ConverterApp(ctk.CTk):
