@@ -13,20 +13,24 @@ if getattr(sys, 'frozen', False):
     import src.core.ffmpeg
     import src.core.presets
     import src.core.ffmpeg_installer
+    import src.core.ffmpeg_updater
     FFmpegWrapper = src.core.ffmpeg.FFmpegWrapper
     PresetManager = src.core.presets.PresetManager
     Preset = src.core.presets.Preset
     FFmpegInstaller = src.core.ffmpeg_installer.FFmpegInstaller
+    FFmpegUpdater = src.core.ffmpeg_updater.FFmpegUpdater
 else:
     # Запуск из исходников
     try:
         from .core.ffmpeg import FFmpegWrapper
         from .core.presets import PresetManager, Preset
         from .core.ffmpeg_installer import FFmpegInstaller
+        from .core.ffmpeg_updater import FFmpegUpdater
     except ImportError:
         from core.ffmpeg import FFmpegWrapper
         from core.presets import PresetManager, Preset
         from core.ffmpeg_installer import FFmpegInstaller
+        from core.ffmpeg_updater import FFmpegUpdater
 
 
 class ConverterApp(ctk.CTk):
@@ -55,6 +59,9 @@ class ConverterApp(ctk.CTk):
         # Показать предупреждение если FFmpeg не найден
         if not self.ffmpeg_available:
             self._show_ffmpeg_warning()
+        else:
+            # Фоновая проверка обновлений
+            self.after(1000, self._check_for_updates)
 
     def _check_ffmpeg(self) -> bool:
         """Проверка наличия FFmpeg в системе."""
@@ -225,13 +232,205 @@ class ConverterApp(ctk.CTk):
     def _check_ffmpeg_and_update(self):
         """Проверить FFmpeg и обновить интерфейс."""
         self.ffmpeg_available = self._check_ffmpeg()
-        self.ffmpeg_status_label.configure(
-            text="✓ FFmpeg найден" if self.ffmpeg_available else "✗ FFmpeg не найден",
-            text_color="green" if self.ffmpeg_available else "red"
-        )
-        # Скрыть кнопку установки если FFmpeg найден
-        if hasattr(self, 'btn_install_ffmpeg') and self.ffmpeg_available:
-            self.btn_install_ffmpeg.destroy()
+        
+        if self.ffmpeg_available:
+            version = FFmpegInstaller.get_ffmpeg_version()
+            self.ffmpeg_status_label.configure(
+                text=f"✓ FFmpeg {version}",
+                text_color="green"
+            )
+            # Добавляем клик для открытия меню
+            self.ffmpeg_status_label.bind(
+                "<Button-1>",
+                lambda e: self._create_ffmpeg_context_menu()
+            )
+            self.ffmpeg_status_label.configure(cursor="hand2")
+            
+            # Скрыть кнопку установки
+            if hasattr(self, 'btn_install_ffmpeg'):
+                self.btn_install_ffmpeg.destroy()
+            
+            # Фоновая проверка обновлений
+            self.after(1000, self._check_for_updates)
+        else:
+            self.ffmpeg_status_label.configure(
+                text="✗ FFmpeg не найден",
+                text_color="red"
+            )
+    
+    def _check_for_updates(self):
+        """Фоновая проверка обновлений"""
+        if FFmpegUpdater.should_notify():
+            self._show_update_notification()
+    
+    def _show_update_notification(self):
+        """Показать уведомление об обновлении"""
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Доступно обновление")
+        dialog.geometry("500x300")
+        dialog.transient(self)
+        dialog.grab_set()
+        
+        update_info = FFmpegUpdater.get_update_info()
+        
+        ctk.CTkLabel(
+            dialog,
+            text="Доступна новая версия FFmpeg!",
+            font=ctk.CTkFont(size=16, weight="bold")
+        ).pack(pady=20)
+        
+        ctk.CTkLabel(
+            dialog,
+            text=f"Версия: {update_info['version']}\n"
+                 f"Дата: {update_info['date']}",
+            justify="center"
+        ).pack(pady=10)
+        
+        btn_frame = ctk.CTkFrame(dialog)
+        btn_frame.pack(pady=20)
+        
+        def on_update():
+            dialog.destroy()
+            self._show_ffmpeg_warning()
+        
+        def on_later():
+            dialog.destroy()
+        
+        def on_dont_show():
+            FFmpegUpdater.suppress_notifications(True)
+            dialog.destroy()
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="Обновить",
+            command=on_update,
+            fg_color="green"
+        ).pack(side="left", padx=10)
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="Позже",
+            command=on_later,
+            fg_color="gray"
+        ).pack(side="left", padx=10)
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="Не показывать снова",
+            command=on_dont_show,
+            fg_color="transparent",
+            border_width=1
+        ).pack(side="left", padx=10)
+    
+    def _create_ffmpeg_context_menu(self):
+        """Контекстное меню для статуса FFmpeg"""
+        if not self.ffmpeg_available:
+            return
+        
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Управление FFmpeg")
+        dialog.geometry("400x350")
+        dialog.transient(self)
+        dialog.grab_set()
+        
+        version = FFmpegInstaller.get_ffmpeg_version()
+        install_date = FFmpegInstaller.get_install_date()
+        
+        ctk.CTkLabel(
+            dialog,
+            text=f"✓ FFmpeg {version}",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color="green"
+        ).pack(pady=20)
+        
+        ctk.CTkLabel(
+            dialog,
+            text=f"Установлен: {install_date}",
+            text_color="gray"
+        ).pack(pady=5)
+        
+        install_dir_str = str(FFmpegInstaller.INSTALL_DIR)
+        ctk.CTkLabel(
+            dialog,
+            text=f"Путь: {install_dir_str}",
+            text_color="gray",
+            wraplength=350
+        ).pack(pady=10)
+        
+        btn_frame = ctk.CTkFrame(dialog)
+        btn_frame.pack(pady=30)
+        
+        def on_open_folder():
+            import subprocess
+            subprocess.run(["explorer", str(FFmpegInstaller.INSTALL_DIR)])
+        
+        def on_update():
+            dialog.destroy()
+            self._show_ffmpeg_warning()
+        
+        def on_uninstall():
+            result = messagebox.askyesno(
+                "Удаление FFmpeg",
+                "⚠️ Внимание!\n\n"
+                "FFmpeg будет удалён.\n"
+                "Приложение не сможет конвертировать файлы\n"
+                "без установленного FFmpeg.\n\n"
+                "Продолжить?",
+                icon=messagebox.WARNING
+            )
+            if result:
+                success = FFmpegInstaller.uninstall()
+                if success:
+                    messagebox.showinfo("Удалено", "FFmpeg успешно удалён")
+                    self._check_ffmpeg_and_update()
+                else:
+                    messagebox.showerror("Ошибка", "Не удалось удалить FFmpeg")
+            dialog.destroy()
+        
+        def on_reset_notifications():
+            FFmpegUpdater.reset_notifications()
+            messagebox.showinfo(
+                "Уведомления",
+                "Уведомления об обновлениях включены.\n"
+                "Вы увидите их при следующем запуске если будет новая версия."
+            )
+            dialog.destroy()
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="📁 Открыть папку",
+            command=on_open_folder
+        ).pack(pady=5)
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="🔄 Обновить",
+            command=on_update,
+            fg_color="orange"
+        ).pack(pady=5)
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="🗑️ Удалить",
+            command=on_uninstall,
+            fg_color="red"
+        ).pack(pady=5)
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="🔔 Включить уведомления",
+            command=on_reset_notifications,
+            fg_color="transparent",
+            border_width=1
+        ).pack(pady=5)
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="Закрыть",
+            command=dialog.destroy,
+            fg_color="transparent",
+            border_width=1
+        ).pack(pady=5)
 
     def create_widgets(self):
         self.grid_columnconfigure(0, weight=1)

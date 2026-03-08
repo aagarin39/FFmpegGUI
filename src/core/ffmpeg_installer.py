@@ -56,6 +56,90 @@ class FFmpegInstaller:
         return None
     
     @classmethod
+    def get_ffmpeg_version(cls) -> str:
+        """Получить версию из файла version.txt"""
+        version_file = cls.INSTALL_DIR.parent / "version.txt"
+        if version_file.exists():
+            return version_file.read_text(encoding='utf-8').strip()
+        return "неизвестно"
+    
+    @classmethod
+    def get_install_date(cls) -> str:
+        """Получить дату установки из файла"""
+        date_file = cls.INSTALL_DIR.parent / "install_date.txt"
+        if date_file.exists():
+            return date_file.read_text(encoding='utf-8').strip()
+        return "неизвестно"
+    
+    @classmethod
+    def validate_installation(cls) -> bool:
+        """Проверить что все файлы на месте"""
+        required = ["ffmpeg.exe", "ffprobe.exe"]
+        for file in required:
+            if not (cls.INSTALL_DIR / file).exists():
+                print(f"Missing required file: {file}")
+                return False
+        
+        # Проверка размера (ffmpeg.exe должен быть > 50MB)
+        ffmpeg_size = (cls.INSTALL_DIR / "ffmpeg.exe").stat().st_size
+        if ffmpeg_size < 50 * 1024 * 1024:
+            print(f"ffmpeg.exe too small: {ffmpeg_size} bytes")
+            return False
+        
+        return True
+    
+    @classmethod
+    def rotate_logs(cls):
+        """Сдвинуть логи: install.log -> .1 -> .2"""
+        log_base = Path.home() / "FFmpegGUI" / "install.log"
+        
+        # .1 -> .2
+        log_2 = log_base.with_suffix('.log.2')
+        if log_2.exists():
+            log_2.unlink()
+        
+        log_1 = log_base.with_suffix('.log.1')
+        if log_1.exists():
+            log_1.rename(log_2)
+        
+        # current -> .1
+        if log_base.exists():
+            log_base.rename(log_1)
+    
+    @classmethod
+    def uninstall(cls) -> bool:
+        """
+        Удалить FFmpeg.
+        Возвращает True если успешно.
+        """
+        try:
+            if not cls.INSTALL_DIR.exists():
+                return False
+            
+            print(f"Uninstalling FFmpeg from {cls.INSTALL_DIR}")
+            
+            # Удаляем ffmpeg папку
+            shutil.rmtree(cls.INSTALL_DIR)
+            
+            # Удаляем метаданные
+            for file in ["version.txt", "install_date.txt"]:
+                path = cls.INSTALL_DIR.parent / file
+                if path.exists():
+                    path.unlink()
+                    print(f"Removed {file}")
+            
+            # Пытаемся удалить пустую родительскую папку
+            parent = cls.INSTALL_DIR.parent
+            if parent.exists() and not any(parent.iterdir()):
+                parent.rmdir()
+                print(f"Removed empty parent directory: {parent}")
+            
+            return True
+        except Exception as e:
+            print(f"Uninstall error: {e}")
+            return False
+    
+    @classmethod
     def cancel_installation(cls):
         """Отменить установку."""
         cls._cancel_flag = True
@@ -240,6 +324,9 @@ class FFmpegInstaller:
         log_file = Path.home() / "FFmpegGUI" / "install.log"
         log_file.parent.mkdir(exist_ok=True)
         
+        # Ротация логов
+        cls.rotate_logs()
+        
         import sys
         from io import StringIO
         
@@ -256,6 +343,11 @@ class FFmpegInstaller:
             print(f"Install dir: {cls.INSTALL_DIR}")
             print(f"Mirrors: {len(cls.MIRROR_URLS)}")
             print()
+            
+            # Очистка старой версии
+            if cls.INSTALL_DIR.exists():
+                print(f"Cleaning old installation: {cls.INSTALL_DIR}")
+                shutil.rmtree(cls.INSTALL_DIR)
             
             # Создаём директорию установки
             print(f"Creating directory: {cls.INSTALL_DIR}")
@@ -287,13 +379,28 @@ class FFmpegInstaller:
             if cls._cancel_flag:
                 raise Exception("Установка отменена пользователем")
             
+            # Проверяем что все файлы на месте
+            print("Validating installation...")
+            if not cls.validate_installation():
+                raise Exception("Не все файлы установлены корректно")
+            
             # Проверяем что файл существует
             ffmpeg_exe = cls.INSTALL_DIR / "ffmpeg.exe"
-            if not ffmpeg_exe.exists():
-                raise Exception(f"ffmpeg.exe не найден в {cls.INSTALL_DIR}")
-            
             print(f"\n✓ FFmpeg installed: {ffmpeg_exe}")
             print(f"  Size: {ffmpeg_exe.stat().st_size} bytes")
+            
+            # Получаем версию из архива (последняя)
+            latest_version = cls.FFMPEG_URL.split('/')[-1].replace('.zip', '')
+            
+            # Сохранение версии и даты
+            version_file = cls.INSTALL_DIR.parent / "version.txt"
+            version_file.write_text(latest_version, encoding='utf-8')
+            print(f"Saved version: {latest_version}")
+            
+            date_file = cls.INSTALL_DIR.parent / "install_date.txt"
+            install_date = __import__('datetime').datetime.now().strftime("%Y-%m-%d")
+            date_file.write_text(install_date, encoding='utf-8')
+            print(f"Saved install date: {install_date}")
             
             # Очищаем временные файлы
             zip_path.unlink()
@@ -313,6 +420,12 @@ class FFmpegInstaller:
         except Exception as e:
             error_msg = f"Installation error: {e}"
             print(error_msg)
+            
+            # Очистка при ошибке
+            if cls.INSTALL_DIR.exists():
+                print(f"Cleaning up after failed installation: {cls.INSTALL_DIR}")
+                shutil.rmtree(cls.INSTALL_DIR)
+            
             import traceback
             traceback.print_exc(file=log_buffer)
             
