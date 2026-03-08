@@ -5,20 +5,16 @@ import threading
 import asyncio
 import sys
 import shutil
+import ctypes
 
-# Импорт для работы в скомпилированном приложении
-if getattr(sys, 'frozen', False):
-    # Запуск из exe
-    from src.core.ffmpeg import FFmpegWrapper
-    from src.core.presets import PresetManager, Preset
-else:
-    # Запуск из исходников
-    try:
-        from .core.ffmpeg import FFmpegWrapper
-        from .core.presets import PresetManager, Preset
-    except ImportError:
-        from core.ffmpeg import FFmpegWrapper
-        from core.presets import PresetManager, Preset
+try:
+    from .core.ffmpeg import FFmpegWrapper
+    from .core.presets import PresetManager, Preset
+    from .core.ffmpeg_installer import FFmpegInstaller
+except ImportError:
+    from core.ffmpeg import FFmpegWrapper
+    from core.presets import PresetManager, Preset
+    from core.ffmpeg_installer import FFmpegInstaller
 
 
 class ConverterApp(ctk.CTk):
@@ -65,43 +61,116 @@ class ConverterApp(ctk.CTk):
         return False
 
     def _show_ffmpeg_warning(self):
-        """Показать предупреждение об отсутствии FFmpeg."""
-        warning_window = ctk.CTkToplevel(self)
-        warning_window.title("Внимание: FFmpeg не найден")
-        warning_window.geometry("500x300")
-        warning_window.transient(self)
+        """Показать предупреждение об отсутствии FFmpeg с предложением установки."""
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("FFmpeg не найден")
+        dialog.geometry("600x450")
+        dialog.transient(self)
+        dialog.grab_set()
         
-        text = """FFmpeg не найден в системе!
+        main_frame = ctk.CTkFrame(dialog)
+        main_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        # Заголовок
+        ctk.CTkLabel(
+            main_frame,
+            text="FFmpeg не найден в системе",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color="red"
+        ).pack(pady=10)
+        
+        # Описание
+        description = """Для работы приложения необходим FFmpeg.
 
-Для работы приложения необходимо установить FFmpeg:
+Вы можете установить его автоматически:
+• FFmpeg будет загружен с официального GitHub-репозитория
+• Установлен в C:\\Program Files\\FFmpegGUI
+• Добавлен в системный PATH
 
-1. Windows:
-   - Скачайте с: https://www.gyan.dev/ffmpeg/builds/
-   - Распакуйте ffmpeg.exe и ffprobe.exe в папку ffmpeg/ рядом с приложением
-   - ИЛИ добавьте в системный PATH
-
-2. Linux:
-   sudo apt install ffmpeg    # Debian/Ubuntu
-   sudo dnf install ffmpeg    # Fedora
-   sudo pacman -S ffmpeg      # Arch
-
-3. macOS:
-   brew install ffmpeg
-
-После установки перезапустите приложение.
-"""
+Требуется подключение к интернету и права администратора."""
         
         ctk.CTkLabel(
-            warning_window,
-            text=text,
-            justify="left"
-        ).pack(padx=20, pady=20, fill="both", expand=True)
+            main_frame,
+            text=description,
+            justify="left",
+            font=ctk.CTkFont(size=12)
+        ).pack(pady=10, padx=20)
         
-        ctk.CTkButton(
-            warning_window,
-            text="Закрыть",
-            command=warning_window.destroy
+        # Прогресс бар
+        self.install_progress = ctk.CTkProgressBar(main_frame)
+        self.install_progress.pack(pady=10, padx=20, fill="x")
+        self.install_progress.set(0)
+        
+        self.install_status = ctk.CTkLabel(main_frame, text="", text_color="gray")
+        self.install_status.pack(pady=5)
+        
+        # Кнопки
+        btn_frame = ctk.CTkFrame(main_frame)
+        btn_frame.pack(pady=20)
+        
+        def on_install():
+            self.btn_install.configure(state="disabled")
+            self.btn_cancel.configure(state="disabled")
+            self._run_installation()
+        
+        self.btn_install = ctk.CTkButton(
+            btn_frame,
+            text="Установить FFmpeg",
+            command=on_install,
+            width=200,
+            height=35
+        )
+        self.btn_install.pack(side="left", padx=10)
+        
+        self.btn_cancel = ctk.CTkButton(
+            btn_frame,
+            text="Отмена",
+            command=lambda: dialog.destroy(),
+            width=150,
+            height=35
+        )
+        self.btn_cancel.pack(side="left", padx=10)
+        
+        # Ссылка на ручной вариант
+        manual_text = """Или установите вручную:
+1. Скачайте с https://github.com/BtbN/FFmpeg-Builds/releases
+2. Распакуйте в удобное место
+3. Добавьте папку bin в системный PATH"""
+        
+        ctk.CTkLabel(
+            main_frame,
+            text=manual_text,
+            justify="left",
+            text_color="gray",
+            font=ctk.CTkFont(size=11)
         ).pack(pady=10)
+    
+    def _run_installation(self):
+        """Запуск установки FFmpeg."""
+        def progress_callback(status: str, percent: float):
+            self.install_status.configure(text=status)
+            self.install_progress.set(percent / 100)
+            self.update()
+        
+        def install_thread():
+            success = FFmpegInstaller.install(progress_callback)
+            
+            if success:
+                self.after(0, lambda: messagebox.showinfo(
+                    "Успех",
+                    "FFmpeg успешно установлен!\n\nПерезапустите приложение для применения изменений."
+                ))
+                self.after(0, lambda: self.quit())
+            else:
+                self.after(0, lambda: messagebox.showerror(
+                    "Ошибка",
+                    "Не удалось установить FFmpeg.\nПопробуйте установить вручную."
+                ))
+                self.after(0, lambda: self.btn_install.configure(state="normal"))
+                self.after(0, lambda: self.btn_cancel.configure(state="normal"))
+        
+        thread = threading.Thread(target=install_thread, daemon=True)
+        thread.start()
 
     def create_widgets(self):
         self.grid_columnconfigure(0, weight=1)
