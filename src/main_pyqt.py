@@ -14,10 +14,11 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QComboBox, QProgressBar, QFileDialog,
     QScrollArea, QFrame, QMessageBox, QGroupBox, QFormLayout,
-    QLineEdit, QCheckBox, QTextEdit, QMenu, QStatusBar, QDialog
+    QLineEdit, QCheckBox, QTextEdit, QMenu, QStatusBar, QDialog,
+    QSlider, QListWidget, QListWidgetItem
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize, QTimer
-from PyQt6.QtGui import QFont, QColor, QAction
+from PyQt6.QtGui import QFont, QAction
 
 # Импорт модулей проекта
 if getattr(sys, 'frozen', False):
@@ -65,7 +66,7 @@ class WorkerThread(QThread):
             name = Path(file).name
             self.log.emit(f"▶ {name}")
             
-            ext: str = self.preset.container if self.preset.container else "mkv" if self.preset.container else "mkv"
+            ext = self.preset.container if self.preset.container else "mkv"
             output = str(self.output_folder / f"{Path(file).stem}.{ext}")
             
             try:
@@ -96,6 +97,420 @@ class InstallerThread(QThread):
         self.finished.emit(result)
 
 
+class PresetBuilderDialog(QDialog):
+    """Диалог конструктора пресетов с подробными описаниями"""
+    
+    HELP_TEXTS = {
+        "name": "Уникальное название пресета (например: 'Для телефона', 'YouTube 1080p')",
+        "desc": "Краткое описание для быстрого понимания назначения пресета",
+        "hw": "Аппаратное ускорение кодирует видео быстрее:\n• nvenc — видеокарты NVIDIA (рекомендуется)\n• qsv — встроенная графика Intel\n• amf — видеокарты AMD\n• cpu — процессор (медленнее, но совместимо со всеми)",
+        "codec": "Кодек сжатия видео:\n• H.264 — максимальная совместимость (телефоны, ТВ, веб)\n• H.265 (HEVC) — лучше сжатие, меньше размер (4K, современные устройства)",
+        "cq": "Качество видео (1-51):\n• 18-22 — высокое качество (рекомендуется)\n• 23-28 — среднее качество\n• 29-51 — низкое качество, маленький размер\nМеньше = лучше качество, больше размер файла",
+        "scale": "Изменить разрешение видео:\n• Нет — оставить как есть\n• 1920x (Full HD) — для ТВ и мониторов\n• 1280x (HD) — для веба и телефонов\n• 3840x (4K) — для 4K телевизоров",
+        "audio": "Количество звуковых каналов:\n• 2 — стерео (наушники, телефоны, ТВ)\n• 6 — 5.1 surround (домашний кинотеатр)\n• 8 — 7.1 surround (профессиональное)",
+        "container": "Формат файла:\n• MKV — универсальный, поддерживает всё\n• MP4 — максимальная совместимость с устройствами",
+        "subs": "Если отмечено — субтитры будут удалены из видео",
+    }
+    
+    def __init__(self, parent, preset_manager):
+        super().__init__(parent)
+        self.preset_manager = preset_manager
+        self.current_preset = None
+        self._init_ui()
+        self._load_presets_list()
+    
+    def _init_ui(self):
+        self.setWindowTitle("Конструктор пресетов")
+        self.setMinimumSize(900, 650)
+        self.resize(900, 650)
+        self.setModal(False)
+        self.setWindowFlags(
+            Qt.WindowType.Dialog | 
+            Qt.WindowType.WindowStaysOnTopHint
+        )
+        
+        layout = QHBoxLayout(self)
+        layout.setSpacing(15)
+        
+        # Левая панель: Список пресетов
+        left_panel = QWidget()
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        
+        left_layout.addWidget(QLabel("<b>Сохранённые пресеты</b>"))
+        
+        self.presets_list = QListWidget()
+        self.presets_list.setMinimumHeight(200)
+        self.presets_list.itemSelectionChanged.connect(self._load_selected_preset)
+        left_layout.addWidget(self.presets_list)
+        
+        # Кнопки управления
+        btn_frame = QFrame()
+        btn_layout = QHBoxLayout(btn_frame)
+        btn_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.new_btn = QPushButton("➕ Новый")
+        self.new_btn.clicked.connect(self._new_preset)
+        btn_layout.addWidget(self.new_btn)
+        
+        self.save_btn = QPushButton("💾 Сохранить")
+        self.save_btn.setStyleSheet("background-color: #15803d; color: white;")
+        self.save_btn.clicked.connect(self._save_preset)
+        btn_layout.addWidget(self.save_btn)
+        
+        self.delete_btn = QPushButton("🗑️ Удалить")
+        self.delete_btn.setStyleSheet("background-color: #dc2626; color: white;")
+        self.delete_btn.clicked.connect(self._delete_preset)
+        btn_layout.addWidget(self.delete_btn)
+        
+        self.reset_btn = QPushButton("🔄 Сбросить")
+        self.reset_btn.setStyleSheet("background-color: #0891b2; color: white;")
+        self.reset_btn.clicked.connect(self._reset_presets)
+        btn_layout.addWidget(self.reset_btn)
+        
+        left_layout.addWidget(btn_frame)
+        left_layout.addStretch()
+        
+        # Информация
+        info_box = QGroupBox("Справка")
+        info_layout = QVBoxLayout(info_box)
+        self.help_label = QLabel("Выберите пресет или создайте новый")
+        self.help_label.setWordWrap(True)
+        self.help_label.setStyleSheet("color: #9ca3af; font-size: 11px;")
+        info_layout.addWidget(self.help_label)
+        left_layout.addWidget(info_box)
+        
+        layout.addWidget(left_panel, 1)
+        
+        # Правая панель: Форма
+        right_panel = QScrollArea()
+        right_panel.setWidgetResizable(True)
+        right_panel.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        
+        form_widget = QWidget()
+        self.form_layout = QFormLayout(form_widget)
+        self.form_layout.setSpacing(12)
+        self.form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        
+        right_panel.setWidget(form_widget)
+        layout.addWidget(right_panel, 2)
+        
+        # Поля формы
+        self._create_form_fields()
+    
+    def _create_form_fields(self):
+        """Создать поля формы с подсказками"""
+        # Название
+        self.name_input = QLineEdit()
+        self.name_input.setPlaceholderText("Введите название пресета")
+        self.name_input.textChanged.connect(lambda: self._show_help("name"))
+        self.form_layout.addRow("Название*", self.name_input)
+        
+        # Описание
+        self.desc_input = QLineEdit()
+        self.desc_input.setPlaceholderText("Краткое описание")
+        self.desc_input.textChanged.connect(lambda: self._show_help("desc"))
+        self.form_layout.addRow("Описание", self.desc_input)
+        
+        self.form_layout.addRow(QLabel("<hr/>"))
+        
+        # Ускорение
+        self.hw_input = QComboBox()
+        self.hw_input.addItems(["nvenc (NVIDIA)", "qsv (Intel)", "amf (AMD)", "cpu (Процессор)"])
+        self.hw_input.currentTextChanged.connect(lambda: self._show_help("hw"))
+        self.form_layout.addRow("Ускорение*", self.hw_input)
+        
+        # Кодек
+        self.codec_input = QComboBox()
+        self.codec_input.addItems(["H.264 (совместимость)", "H.265/HEVC (эффективность)"])
+        self.codec_input.currentTextChanged.connect(lambda: self._show_help("codec"))
+        self.form_layout.addRow("Кодек*", self.codec_input)
+        
+        # Качество CQ
+        cq_frame = QHBoxLayout()
+        self.cq_slider = QSlider(Qt.Orientation.Horizontal)
+        self.cq_slider.setMinimum(1)
+        self.cq_slider.setMaximum(51)
+        self.cq_slider.setValue(20)
+        self.cq_slider.valueChanged.connect(self._update_cq_label)
+        
+        self.cq_label = QLabel("20")
+        self.cq_label.setMinimumWidth(30)
+        self.cq_label.setStyleSheet("font-weight: bold; color: #22c55e;")
+        
+        cq_frame.addWidget(self.cq_slider)
+        cq_frame.addWidget(self.cq_label)
+        
+        self.cq_slider.valueChanged.connect(lambda: self._show_help("cq"))
+        self.form_layout.addRow("Качество (CQ)*", cq_frame)
+        
+        # Масштабирование
+        self.scale_input = QComboBox()
+        self.scale_input.addItems(["Нет (оригинал)", "1920x Full HD", "1280x HD", "3840x 4K"])
+        self.scale_input.currentTextChanged.connect(lambda: self._show_help("scale"))
+        self.form_layout.addRow("Масштаб", self.scale_input)
+        
+        self.form_layout.addRow(QLabel("<hr/>"))
+        
+        # Аудио каналы
+        self.audio_input = QComboBox()
+        self.audio_input.addItems(["2 (Стерео)", "6 (5.1 Surround)", "8 (7.1 Surround)"])
+        self.audio_input.currentTextChanged.connect(lambda: self._show_help("audio"))
+        self.form_layout.addRow("Аудио каналы*", self.audio_input)
+        
+        # Контейнер
+        self.container_input = QComboBox()
+        self.container_input.addItems(["MKV (универсальный)", "MP4 (совместимость)"])
+        self.container_input.currentTextChanged.connect(lambda: self._show_help("container"))
+        self.form_layout.addRow("Контейнер*", self.container_input)
+        
+        # Субтитры
+        self.subs_input = QCheckBox("Удалить субтитры из видео")
+        self.subs_input.stateChanged.connect(lambda: self._show_help("subs"))
+        self.form_layout.addRow("", self.subs_input)
+        
+        # Индикатор изменений
+        self.modified_label = QLabel("")
+        self.modified_label.setStyleSheet("color: #f59e0b; font-style: italic;")
+        self.form_layout.addRow("", self.modified_label)
+        
+        # Подключить отслеживание изменений
+        self.name_input.textChanged.connect(self._on_modified)
+        self.desc_input.textChanged.connect(self._on_modified)
+        self.hw_input.currentTextChanged.connect(self._on_modified)
+        self.codec_input.currentTextChanged.connect(self._on_modified)
+        self.cq_slider.valueChanged.connect(self._on_modified)
+        self.scale_input.currentTextChanged.connect(self._on_modified)
+        self.audio_input.currentTextChanged.connect(self._on_modified)
+        self.container_input.currentTextChanged.connect(self._on_modified)
+        self.subs_input.stateChanged.connect(self._on_modified)
+    
+    def _show_help(self, key):
+        """Показать справку по полю"""
+        self.help_label.setText(self.HELP_TEXTS.get(key, ""))
+    
+    def _update_cq_label(self, value):
+        """Обновить метку качества"""
+        self.cq_label.setText(str(value))
+        if value <= 22:
+            self.cq_label.setStyleSheet("font-weight: bold; color: #22c55e;")
+        elif value <= 30:
+            self.cq_label.setStyleSheet("font-weight: bold; color: #f59e0b;")
+        else:
+            self.cq_label.setStyleSheet("font-weight: bold; color: #ef4444;")
+    
+    def _on_modified(self):
+        """Отметить форму как изменённую"""
+        if self.current_preset:
+            self.modified_label.setText("✏️ Изменено — сохраните пресет")
+        else:
+            self.modified_label.setText("✏️ Новый пресет — введите название и сохраните")
+    
+    def _load_presets_list(self):
+        """Загрузить список пресетов"""
+        self.presets_list.clear()
+        
+        for p in self.preset_manager.get_all_presets():
+            icon = "📦 " if p.id.startswith("custom_") else "🔒 "
+            item = QListWidgetItem(f"{icon}{p.name}")
+            item.setData(Qt.ItemDataRole.UserRole, p.id)
+            self.presets_list.addItem(item)
+    
+    def _load_selected_preset(self):
+        """Загрузить выбранный пресет в форму"""
+        items = self.presets_list.selectedItems()
+        if not items:
+            return
+        
+        preset_id = items[0].data(Qt.ItemDataRole.UserRole)
+        preset = self.preset_manager.get_preset(preset_id)
+        if not preset:
+            return
+        
+        self.current_preset = preset
+        self.modified_label.setText("")
+        
+        # Заполнить форму
+        self.name_input.setText(preset.name)
+        self.desc_input.setText(preset.description)
+        
+        # Ускорение
+        hw_map = {"nvenc": 0, "qsv": 1, "amf": 2, None: 3}
+        self.hw_input.setCurrentIndex(hw_map.get(preset.hw_accelerator, 3))
+        
+        # Кодек
+        codec_idx = 0 if preset.codec_type == "h264" else 1
+        self.codec_input.setCurrentIndex(codec_idx)
+        
+        # Качество
+        self.cq_slider.setValue(preset.cq)
+        
+        # Масштаб
+        scale_map = {"": 0, "1920:-2": 1, "1280:-2": 2, "3840:-2": 3}
+        self.scale_input.setCurrentIndex(scale_map.get(preset.scale, 0))
+        
+        # Аудио
+        audio_map = {"2": 0, "6": 1, "8": 2}
+        self.audio_input.setCurrentIndex(audio_map.get(str(preset.audio_channels), 0))
+        
+        # Контейнер
+        container_idx = 0 if preset.container == "mkv" else 1
+        self.container_input.setCurrentIndex(container_idx)
+        
+        # Субтитры
+        self.subs_input.setChecked(preset.remove_subtitles)
+        
+        self._show_help("name")
+    
+    def _new_preset(self):
+        """Очистить форму для нового пресета"""
+        self.current_preset = None
+        self.presets_list.clearSelection()
+        self.name_input.clear()
+        self.desc_input.clear()
+        self.hw_input.setCurrentIndex(0)
+        self.codec_input.setCurrentIndex(0)
+        self.cq_slider.setValue(20)
+        self.scale_input.setCurrentIndex(0)
+        self.audio_input.setCurrentIndex(0)
+        self.container_input.setCurrentIndex(0)
+        self.subs_input.setChecked(False)
+        self.modified_label.setText("✏️ Новый пресет — введите название и сохраните")
+        self._show_help("name")
+    
+    def _get_preset_from_form(self):
+        """Получить данные пресета из формы"""
+        name = self.name_input.text().strip()
+        if not name:
+            return None
+        
+        # Парсинг значений
+        hw_map = {0: "nvenc", 1: "qsv", 2: "amf", 3: None}
+        hw = hw_map.get(self.hw_input.currentIndex())
+        
+        codec = "h264" if self.codec_input.currentIndex() == 0 else "hevc"
+        
+        scale_map = {0: "", 1: "1920:-2", 2: "1280:-2", 3: "3840:-2"}
+        scale = scale_map.get(self.scale_input.currentIndex())
+        
+        audio_map = {0: 2, 1: 6, 2: 8}
+        audio = audio_map.get(self.audio_input.currentIndex(), 2)
+        
+        container = "mkv" if self.container_input.currentIndex() == 0 else "mp4"
+        
+        # ID для пользовательских пресетов
+        if self.current_preset and self.current_preset.id.startswith("custom_"):
+            preset_id = self.current_preset.id
+        else:
+            preset_id = f"custom_{name.lower().replace(' ', '_')}"
+        
+        return Preset(
+            id=preset_id,
+            name=name,
+            description=self.desc_input.text().strip(),
+            hw_accelerator=hw,
+            codec_type=codec,
+            cq=self.cq_slider.value(),
+            scale=scale if scale else None,
+            audio_channels=audio,
+            remove_subtitles=bool(self.subs_input.isChecked()),
+            container=container,
+        )
+    
+    def _save_preset(self):
+        """Сохранить пресет"""
+        preset = self._get_preset_from_form()
+        if not preset:
+            QMessageBox.warning(self, "Ошибка", "Введите название пресета")
+            return
+        
+        # Проверка на встроенные пресеты
+        if self.current_preset and not self.current_preset.id.startswith("custom_"):
+            reply = QMessageBox.question(
+                self, "Сохранение",
+                "Это встроенный пресет. Сохранить как новый?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+        
+        self.preset_manager.add_preset(preset)
+        self._load_presets_list()
+        self.modified_label.setText("✓ Сохранено")
+        
+        # Обновить комбобокс в главном окне
+        if self.parent() and hasattr(self.parent(), 'preset_combo'):
+            self.parent().preset_combo.clear()
+            self.parent().preset_combo.addItems([p.name for p in self.preset_manager.get_all_presets()])
+    
+    def _delete_preset(self):
+        """Удалить выбранный пресет"""
+        items = self.presets_list.selectedItems()
+        if not items:
+            QMessageBox.information(self, "Удаление", "Сначала выберите пресет")
+            return
+        
+        if not self.current_preset:
+            QMessageBox.information(self, "Удаление", "Сначала выберите пресет")
+            return
+        
+        if not self.current_preset.id.startswith("custom_"):
+            QMessageBox.warning(
+                self, "Нельзя удалить",
+                "Встроенные пресеты удалять нельзя.\nСоздайте свой пресет с нужными параметрами."
+            )
+            return
+        
+        reply = QMessageBox.question(
+            self, "Подтверждение",
+            f"Удалить пресет '{self.current_preset.name}'?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            self.preset_manager.delete_preset(self.current_preset.id)
+            self._load_presets_list()
+            self._new_preset()
+    
+    def _reset_presets(self):
+        """Восстановить стандартные пресеты"""
+        reply = QMessageBox.question(
+            self,
+            "Восстановление пресетов",
+            "⚠️  Все пользовательские пресеты будут удалены.\n"
+            "Стандартные пресеты будут восстановлены.\n\n"
+            "Продолжить?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        
+        # Удаляем файл пользовательских пресетов
+        import os
+        try:
+            os.remove(self.preset_manager.config_path)
+        except FileNotFoundError:
+            pass
+        
+        # Пересоздаём менеджер пресетов - это загрузит стандартные
+        self.preset_manager = PresetManager()
+        self._load_presets_list()
+        self._new_preset()
+        
+        # Обновить комбобокс в главном окне
+        if self.parent() and hasattr(self.parent(), 'preset_combo'):
+            self.parent().preset_combo.clear()
+            self.parent().preset_combo.addItems([p.name for p in self.preset_manager.get_all_presets()])
+        
+        QMessageBox.information(
+            self,
+            "Готово",
+            "✓ Стандартные пресеты восстановлены"
+        )
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -105,10 +520,11 @@ class MainWindow(QMainWindow):
         
         # Центрирование на текущем мониторе
         screen = QApplication.screenAt(self.pos()) or QApplication.primaryScreen()
-        geo = screen.availableGeometry()
-        x = geo.x() + (geo.width() - self.width()) // 2
-        y = geo.y() + (geo.height() - self.height()) // 2
-        self.move(x, y)
+        if screen:
+            geo = screen.availableGeometry()
+            x = geo.x() + (geo.width() - self.width()) // 2
+            y = geo.y() + (geo.height() - self.height()) // 2
+            self.move(x, y)
         
         self.ffmpeg = FFmpegWrapper()
         self.preset_manager = PresetManager()
@@ -130,13 +546,11 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(15, 15, 15, 15)
         layout.setSpacing(10)
         
-        # ===== Header =====
+        # Header
         header = QHBoxLayout()
-        
         title = QLabel("FFmpeg Converter")
         title.setFont(QFont("Segoe UI", 20, QFont.Weight.Bold))
         header.addWidget(title)
-        
         header.addStretch()
         
         self.status_label = QLabel("Проверка...")
@@ -145,7 +559,7 @@ class MainWindow(QMainWindow):
         
         layout.addLayout(header)
         
-        # ===== Баннер установки =====
+        # Баннер установки
         self.install_banner = QFrame()
         self.install_banner.setStyleSheet("background-color: #d97706; padding: 10px;")
         self.install_banner.hide()
@@ -154,21 +568,14 @@ class MainWindow(QMainWindow):
         banner_layout.addWidget(QLabel("⚠️  FFmpeg не найден. Установите для работы."))
         
         install_btn = QPushButton("Установить")
-        install_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #15803d; color: white;
-                padding: 8px 20px; border-radius: 4px;
-                font-weight: bold;
-            }
-            QPushButton:hover { background-color: #166534; }
-        """)
+        install_btn.setStyleSheet("QPushButton { background-color: #15803d; color: white; padding: 8px 20px; border-radius: 4px; font-weight: bold; } QPushButton:hover { background-color: #166534; }")
         install_btn.clicked.connect(self._install_ffmpeg)
         banner_layout.addWidget(install_btn)
         banner_layout.addStretch()
         
         layout.addWidget(self.install_banner)
         
-        # ===== Баннер обновления =====
+        # Баннер обновления
         self.update_banner = QFrame()
         self.update_banner.setStyleSheet("background-color: #0284c7; padding: 10px;")
         self.update_banner.hide()
@@ -177,30 +584,19 @@ class MainWindow(QMainWindow):
         update_layout.addWidget(QLabel("🔄 Доступна новая версия FFmpeg"))
         
         update_btn = QPushButton("Обновить")
-        update_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #15803d; color: white;
-                padding: 8px 15px; border-radius: 4px;
-            }
-        """)
+        update_btn.setStyleSheet("QPushButton { background-color: #15803d; color: white; padding: 8px 15px; border-radius: 4px; }")
         update_btn.clicked.connect(self._install_ffmpeg)
         update_layout.addWidget(update_btn)
         
         dismiss_btn = QPushButton("✕")
-        dismiss_btn.setStyleSheet("""
-            QPushButton {
-                background: transparent; border: 1px solid white;
-                color: white; padding: 5px 10px; border-radius: 3px;
-            }
-            QPushButton:hover { background-color: #dc2626; }
-        """)
+        dismiss_btn.setStyleSheet("QPushButton { background: transparent; border: 1px solid white; color: white; padding: 5px 10px; border-radius: 3px; } QPushButton:hover { background-color: #dc2626; }")
         dismiss_btn.clicked.connect(self.update_banner.hide)
         update_layout.addWidget(dismiss_btn)
         update_layout.addStretch()
         
         layout.addWidget(self.update_banner)
         
-        # ===== Выбор папки =====
+        # Выбор папки
         folder_frame = QGroupBox("Папка с файлами")
         folder_layout = QHBoxLayout(folder_frame)
         
@@ -215,7 +611,7 @@ class MainWindow(QMainWindow):
         
         layout.addWidget(folder_frame)
         
-        # ===== Пресеты =====
+        # Пресеты
         preset_frame = QGroupBox("Настройки конвертации")
         preset_layout = QHBoxLayout(preset_frame)
         
@@ -229,7 +625,7 @@ class MainWindow(QMainWindow):
         preset_layout.addWidget(self.preset_combo)
         
         builder_btn = QPushButton("🛠 Конструктор")
-        builder_btn.clicked.connect(self._preset_builder)
+        builder_btn.clicked.connect(self._open_preset_builder)
         preset_layout.addWidget(builder_btn)
         
         self.preset_info = QLabel("")
@@ -239,7 +635,7 @@ class MainWindow(QMainWindow):
         
         layout.addWidget(preset_frame)
         
-        # ===== Список файлов =====
+        # Список файлов
         files_group = QGroupBox("Файлы")
         files_layout = QVBoxLayout(files_group)
         
@@ -261,21 +657,13 @@ class MainWindow(QMainWindow):
         
         layout.addWidget(files_group, 1)
         
-        # ===== Прогресс =====
+        # Прогресс
         progress_group = QGroupBox("Конвертация")
         progress_layout = QHBoxLayout(progress_group)
         
         self.convert_btn = QPushButton("▶ Конвертировать")
         self.convert_btn.setMinimumHeight(40)
-        self.convert_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #2563eb; color: white;
-                font-size: 13px; font-weight: bold;
-                border-radius: 4px; padding: 10px;
-            }
-            QPushButton:hover { background-color: #1d4ed8; }
-            QPushButton:disabled { background-color: #4b5563; }
-        """)
+        self.convert_btn.setStyleSheet("QPushButton { background-color: #2563eb; color: white; font-size: 13px; font-weight: bold; border-radius: 4px; padding: 10px; } QPushButton:hover { background-color: #1d4ed8; } QPushButton:disabled { background-color: #4b5563; }")
         self.convert_btn.clicked.connect(self._convert)
         progress_layout.addWidget(self.convert_btn)
         
@@ -290,7 +678,7 @@ class MainWindow(QMainWindow):
         
         layout.addWidget(progress_group)
         
-        # ===== Лог =====
+        # Лог
         log_group = QGroupBox("Лог операций")
         log_layout = QVBoxLayout(log_group)
         
@@ -301,11 +689,11 @@ class MainWindow(QMainWindow):
         
         layout.addWidget(log_group)
         
-        # ===== Статус бар =====
-        self.statusBar = QStatusBar()
-        self.setStatusBar(self.statusBar)
+        # Статус бар
+        self.status_bar = QStatusBar()
+        self.setStatusBar(self.status_bar)
         self.convert_status = QLabel("")
-        self.statusBar.addWidget(self.convert_status)
+        self.status_bar.addWidget(self.convert_status)
     
     def _check_ffmpeg(self):
         self.ffmpeg_available = shutil.which("ffmpeg") is not None
@@ -317,11 +705,8 @@ class MainWindow(QMainWindow):
             self.ffmpeg_version = FFmpegInstaller.get_ffmpeg_version()
             self.status_label.setText(f"✓ FFmpeg {self.ffmpeg_version}")
             self.status_label.setStyleSheet("color: #22c55e; font-size: 12px;")
-            self.status_label.mousePressEvent = self._ffmpeg_menu
             self.status_label.setCursor(Qt.CursorShape.PointingHandCursor)
             self.install_banner.hide()
-            
-            # Проверка обновлений через 8 секунд
             QTimer.singleShot(8000, self._check_updates)
         else:
             self.status_label.setText("✗ FFmpeg не найден")
@@ -334,6 +719,11 @@ class MainWindow(QMainWindow):
                 self.update_banner.show()
         except:
             pass
+    
+    def _open_preset_builder(self):
+        """Открыть конструктор пресетов"""
+        dlg = PresetBuilderDialog(self, self.preset_manager)
+        dlg.show()
     
     def _ffmpeg_menu(self, event):
         if not self.ffmpeg_available:
@@ -352,7 +742,7 @@ class MainWindow(QMainWindow):
             self._log("✓ FFmpeg удалён")
             self._check_ffmpeg()
         else:
-            self.statusBar.showMessage("✗ Ошибка удаления", 3000)
+            self.status_bar.showMessage("✗ Ошибка удаления", 3000)
     
     def _install_ffmpeg(self):
         if self.installer and self.installer.isRunning():
@@ -360,7 +750,7 @@ class MainWindow(QMainWindow):
         
         self.update_banner.hide()
         self.installer = InstallerThread()
-        self.installer.progress.connect(lambda p: self.statusBar.showMessage(f"Установка... {p}%", 2000))
+        self.installer.progress.connect(lambda p: self.status_bar.showMessage(f"Установка... {p}%", 2000))
         self.installer.finished.connect(self._install_done)
         self.installer.start()
     
@@ -379,7 +769,7 @@ class MainWindow(QMainWindow):
             # Очистка
             while self.files_layout.count() > 1:
                 item = self.files_layout.takeAt(0)
-                if item.widget():
+                if item and item.widget():
                     item.widget().deleteLater()
             
             exts = {".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".m4v",
@@ -400,87 +790,6 @@ class MainWindow(QMainWindow):
         if p:
             self.selected_preset = p
             self.preset_info.setText(p.description)
-    
-    def _preset_builder(self):
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Конструктор пресетов")
-        dlg.setModal(True)
-        dlg.setMinimumWidth(450)
-        
-        form = QFormLayout()
-        
-        name = QLineEdit()
-        name.setPlaceholderText("Название")
-        form.addRow("Название:", name)
-        
-        desc = QLineEdit()
-        desc.setPlaceholderText("Описание")
-        form.addRow("Описание:", desc)
-        
-        hw = QComboBox()
-        hw.addItems(["nvenc", "qsv", "amf", "cpu"])
-        form.addRow("Ускорение:", hw)
-        
-        codec = QComboBox()
-        codec.addItems(["h264", "hevc"])
-        form.addRow("Кодек:", codec)
-        
-        cq = QLineEdit("20")
-        form.addRow("CQ (1-51):", cq)
-        
-        scale = QComboBox()
-        scale.addItems(["", "1920:-2", "1280:-2", "3840:-2"])
-        form.addRow("Масштаб:", scale)
-        
-        audio = QComboBox()
-        audio.addItems(["2", "6", "8"])
-        form.addRow("Аудио каналы:", audio)
-        
-        container = QComboBox()
-        container.addItems(["mkv", "mp4"])
-        form.addRow("Контейнер:", container)
-        
-        subs = QCheckBox("Удалить субтитры")
-        form.addRow("", subs)
-        
-        btns = QHBoxLayout()
-        save_btn = QPushButton("Сохранить")
-        save_btn.setStyleSheet("background-color: #15803d; color: white; padding: 8px 20px;")
-        save_btn.clicked.connect(lambda: self._save_preset(dlg, name, desc, hw, codec, cq, scale, audio, container, subs))
-        btns.addWidget(save_btn)
-        
-        cancel_btn = QPushButton("Отмена")
-        cancel_btn.clicked.connect(dlg.reject)
-        btns.addWidget(cancel_btn)
-        
-        layout = QVBoxLayout(dlg)
-        layout.addLayout(form)
-        layout.addLayout(btns)
-        
-        dlg.exec()
-    
-    def _save_preset(self, dlg, name, desc, hw, codec, cq, scale, audio, container, subs):
-        n = name.text().strip()
-        if not n:
-            return
-        
-        h = hw.currentText() if hw.currentText() != "cpu" else None
-        p = Preset(
-            id=f"custom_{n.lower().replace(' ', '_')}",
-            name=n,
-            description=desc.text().strip(),
-            hw_accelerator=h,
-            codec_type=codec.currentText(),
-            cq=int(cq.text()) if cq.text().isdigit() else 20,
-            scale=scale.currentText() if scale.currentText() else None,
-            audio_channels=int(audio.currentText()),
-            remove_subtitles=bool(subs.isChecked()),
-            container=container.currentText(),
-        )
-        self.preset_manager.add_preset(p)
-        self.preset_combo.addItem(n)
-        self._log(f"✓ Пресет: {n}")
-        dlg.accept()
     
     def _convert(self):
         if not self.ffmpeg_available:
@@ -511,7 +820,8 @@ class MainWindow(QMainWindow):
         self.worker.start()
     
     def _on_progress(self, current, name):
-        self.progress_bar.setValue(int(current / len(self.files_list) * 100))
+        total = len(self.files_list)
+        self.progress_bar.setValue(int(current / total * 100))
         self.progress_label.setText(name)
     
     def _on_done(self, ok, err):
@@ -528,9 +838,6 @@ class MainWindow(QMainWindow):
     def _log(self, msg):
         t = datetime.datetime.now().strftime("%H:%M:%S")
         self.log_text.append(f"[{t}] {msg}")
-
-
-# Импорт QTimer в начале файла
 
 
 def main():
@@ -593,6 +900,22 @@ def main():
         QProgressBar::chunk {
             background: #2563eb;
             border-radius: 4px;
+        }
+        QListWidget {
+            background-color: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 4px;
+            padding: 5px;
+        }
+        QListWidget::item {
+            padding: 5px;
+            border-radius: 3px;
+        }
+        QListWidget::item:selected {
+            background-color: #2563eb;
+        }
+        QListWidget::item:hover {
+            background-color: #374151;
         }
     """)
     
