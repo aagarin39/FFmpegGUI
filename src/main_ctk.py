@@ -1,18 +1,32 @@
-import customtkinter as ctk
-from tkinter import filedialog
-from pathlib import Path
-import threading
+import ctypes
+import datetime
+import shutil
 import subprocess
 import sys
-import shutil
-import datetime
+import threading
+from pathlib import Path
+from tkinter import filedialog
+
+import customtkinter as ctk
+
+# DPI awareness для Windows
+if sys.platform == "win32":
+    try:
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+    except Exception:
+        try:
+            ctypes.windll.user32.SetProcessDPIAware()
+        except Exception:
+            pass
+
 
 # Импорт для работы в скомпилированном приложении
-if getattr(sys, 'frozen', False):
+if getattr(sys, "frozen", False):
     import src.core.ffmpeg
-    import src.core.presets
     import src.core.ffmpeg_installer
     import src.core.ffmpeg_updater
+    import src.core.presets
+
     FFmpegWrapper = src.core.ffmpeg.FFmpegWrapper
     PresetManager = src.core.presets.PresetManager
     Preset = src.core.presets.Preset
@@ -21,753 +35,535 @@ if getattr(sys, 'frozen', False):
 else:
     try:
         from .core.ffmpeg import FFmpegWrapper
-        from .core.presets import PresetManager
         from .core.ffmpeg_installer import FFmpegInstaller
         from .core.ffmpeg_updater import FFmpegUpdater
+        from .core.presets import PresetManager, Preset
     except ImportError:
         from core.ffmpeg import FFmpegWrapper
-        from core.presets import PresetManager
         from core.ffmpeg_installer import FFmpegInstaller
         from core.ffmpeg_updater import FFmpegUpdater
+        from core.presets import PresetManager, Preset
 
 
 class ConverterApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
+        # Настройка окна - фиксированный размер для стабильности
         self.title("FFmpeg Converter")
-        self.geometry("1000x700")
-        self.minsize(800, 600)  # Минимальный размер
+        self.geometry("1100x750")
+        self.resizable(True, True)
+        self.minsize(850, 600)
+
+        # Отключаем перерисовку во время движения окна
+        self._moving = False
 
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
 
-        # Состояние приложения
+        # Состояние
         self.ffmpeg_available = False
         self.ffmpeg_version = ""
         self.is_installing = False
-        self.install_progress = 0
-        self.has_update = False
-        
+
         self.ffmpeg = FFmpegWrapper()
         self.preset_manager = PresetManager()
 
         self.selected_folder = None
         self.files_list = []
         self.selected_preset = None
-        self.is_converting = False
 
-        self.create_widgets()
-        
-        # Проверка состояния после создания виджетов
-        self.after(100, self._initialize_ffmpeg_status)
+        self._create_ui()
+        self.after(300, self._init_ffmpeg)
 
-    def _initialize_ffmpeg_status(self):
-        """Инициализация статуса FFmpeg"""
-        self._check_ffmpeg_and_update()
+    def _init_ffmpeg(self):
+        self._check_ffmpeg()
+        self.after(8000, self._check_updates)
 
-    def _check_ffmpeg(self) -> bool:
-        """Проверка наличия FFmpeg в системе."""
-        # Проверяем папку установки
+    def _check_ffmpeg(self):
+        self.ffmpeg_available = shutil.which("ffmpeg") is not None
         install_dir = Path.home() / "FFmpegGUI" / "ffmpeg"
-        
         if (install_dir / "ffmpeg.exe").exists():
-            return True
-        
-        # Проверяем в PATH
-        if shutil.which("ffmpeg"):
-            return True
-        
-        return False
+            self.ffmpeg_available = True
 
-    def _check_ffmpeg_and_update(self):
-        """Проверить FFmpeg и обновить интерфейс"""
-        self.ffmpeg_available = self._check_ffmpeg()
-        
         if self.ffmpeg_available:
             self.ffmpeg_version = FFmpegInstaller.get_ffmpeg_version()
-            self._show_ffmpeg_installed()
-        else:
-            self._show_ffmpeg_not_installed()
-
-    def _add_log_entry(self, message: str):
-        """Добавить запись в лог операций"""
-        if hasattr(self, 'log_text'):
-            self.log_text.configure(state="normal")
-            timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-            self.log_text.insert("end", f"[{timestamp}] {message}\n")
-            self.log_text.see("end")
-            self.log_text.configure(state="disabled")
-
-    def _delete_ffmpeg_no_confirm(self, dialog):
-        """Удалить FFmpeg без подтверждения"""
-        success = FFmpegInstaller.uninstall()
-        if success:
-            self.lbl_status.configure(
-                text="✓ FFmpeg успешно удалён",
-                text_color="green"
+            self.status_lbl.configure(
+                text=f"✓ FFmpeg {self.ffmpeg_version}",
+                text_color="#22c55e",
             )
-            self._add_log_entry("FFmpeg успешно удалён")
-            dialog.destroy()
-            self._check_ffmpeg_and_update()
+            self.status_lbl.bind("<Button-1>", lambda e: self._ffmpeg_menu())
+            self.status_lbl.configure(cursor="hand2")
+            self.install_banner.pack_forget()
         else:
-            self.lbl_status.configure(
-                text="✗ Не удалось удалить FFmpeg",
-                text_color="red"
-            )
-            self._add_log_entry("Ошибка: Не удалось удалить FFmpeg")
+            self.status_lbl.configure(text="✗ FFmpeg не найден", text_color="#ef4444")
+            self.install_banner.pack(fill="x", padx=20, pady=5)
 
-    def _show_ffmpeg_installed(self):
-        """Показать что FFmpeg установлен"""
-        self.ffmpeg_status_label.configure(
-            text=f"✓ FFmpeg {self.ffmpeg_version}",
-            text_color="green"
-        )
-        self.ffmpeg_status_label.bind("<Button-1>", lambda e: self._create_ffmpeg_context_menu())
-        self.ffmpeg_status_label.configure(cursor="hand2")
-        
-        # Скрываем баннер установки
-        if hasattr(self, 'install_banner_frame'):
-            self.install_banner_frame.grid_remove()
-        
-        # Проверяем обновления (фоново, раз в 7 дней)
-        self._check_for_updates()
+    def _check_updates(self):
+        try:
+            if FFmpegUpdater.should_notify():
+                self.update_banner.pack(fill="x", padx=20, pady=5, before=self.main_frame)
+        except Exception:
+            pass
 
-    def _show_ffmpeg_not_installed(self):
-        """Показать что FFmpeg не установлен"""
-        self.ffmpeg_status_label.configure(
-            text="✗ FFmpeg не найден",
-            text_color="red"
-        )
-        self.ffmpeg_status_label.unbind("<Button-1>")
-        self.ffmpeg_status_label.configure(cursor="")
-        
-        # Показываем баннер установки
-        if hasattr(self, 'install_banner_frame'):
-            self.install_banner_frame.grid()
-        
-        # Скрываем баннер обновления если был показан
-        if hasattr(self, 'update_banner_frame'):
-            self.update_banner_frame.grid_remove()
+    def _create_ui(self):
+        # ===== Header =====
+        header = ctk.CTkFrame(self, height=50, fg_color="transparent")
+        header.pack(fill="x", padx=20, pady=(15, 10))
+        header.pack_propagate(False)
 
-    def _check_update_banner(self):
-        """Проверить и показать баннер обновления"""
-        self.has_update = FFmpegUpdater.should_notify()
-        
-        if hasattr(self, 'update_banner_frame'):
-            if self.has_update:
-                self.update_banner_frame.grid()
-            else:
-                self.update_banner_frame.grid_forget()
-
-    # ========== Создание виджетов ==========
-    
-    def create_widgets(self):
-        # Настройка масштабирования
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(0, weight=0)  # Header
-        self.grid_rowconfigure(1, weight=0)  # Banner
-        self.grid_rowconfigure(2, weight=0)  # Folder
-        self.grid_rowconfigure(3, weight=0)  # Preset
-        self.grid_rowconfigure(4, weight=1)  # Files (растягивается)
-        self.grid_rowconfigure(5, weight=0)  # Progress
-        self.grid_rowconfigure(6, weight=0)  # Log
-        self.grid_rowconfigure(7, weight=0)  # Confirmation (для удаления FFmpeg)
-
-        # ===== Заголовок =====
-        header_frame = ctk.CTkFrame(self)
-        header_frame.grid(row=0, column=0, pady=10, padx=20, sticky="ew")
-        header_frame.grid_columnconfigure(0, weight=1)
-        header_frame.grid_columnconfigure(1, weight=0)
-        
         ctk.CTkLabel(
-            header_frame,
+            header,
             text="FFmpeg Converter",
-            font=ctk.CTkFont(size=24, weight="bold")
-        ).grid(row=0, column=0, padx=20, pady=10, sticky="w")
-        
-        # Индикатор статуса FFmpeg
-        self.ffmpeg_status_label = ctk.CTkLabel(
-            header_frame,
+            font=ctk.CTkFont(size=26, weight="bold"),
+        ).pack(side="left")
+
+        self.status_lbl = ctk.CTkLabel(
+            header,
             text="Проверка...",
-            text_color="gray",
-            font=ctk.CTkFont(size=12)
+            font=ctk.CTkFont(size=12),
+            text_color="#6b7280",
         )
-        self.ffmpeg_status_label.grid(row=0, column=1, padx=20, pady=10, sticky="e")
+        self.status_lbl.pack(side="right")
 
-        # ===== Баннер установки FFmpeg =====
-        self.install_banner_frame = ctk.CTkFrame(self, fg_color="#d97706")
-        self.install_banner_frame.grid(row=1, column=0, pady=5, padx=20, sticky="ew")
-        self.install_banner_frame.grid_columnconfigure(0, weight=1)
-        
-        install_label = ctk.CTkLabel(
-            self.install_banner_frame,
-            text="⚠️  Для работы приложения необходим FFmpeg. Установите его для продолжения.",
+        # ===== Баннер установки =====
+        self.install_banner = ctk.CTkFrame(self, fg_color="#d97706", height=50)
+        self.install_banner.pack(fill="x", padx=20, pady=5)
+        self.install_banner.pack_propagate(False)
+        self.install_banner.pack_forget()  # Скрыт по умолчанию
+
+        ctk.CTkLabel(
+            self.install_banner,
+            text="⚠️  FFmpeg не найден. Установите для работы.",
             font=ctk.CTkFont(size=13, weight="bold"),
-            text_color="white"
-        )
-        install_label.grid(row=0, column=0, padx=20, pady=15, sticky="w")
-        
-        self.btn_install_banner = ctk.CTkButton(
-            self.install_banner_frame,
-            text="Установить FFmpeg",
-            command=self._start_installation,
-            width=160,
-            height=36,
-            fg_color="#15803d",
-            hover_color="#166534",
             text_color="white",
-            font=ctk.CTkFont(size=13, weight="bold")
-        )
-        self.btn_install_banner.grid(row=0, column=1, padx=20, pady=15)
+        ).pack(side="left", padx=20, pady=12)
 
-        # ===== Баннер обновления FFmpeg =====
-        self.update_banner_frame = ctk.CTkFrame(self, fg_color="#0284c7")
-        self.update_banner_frame.grid(row=1, column=0, pady=5, padx=20, sticky="ew")
-        self.update_banner_frame.grid_columnconfigure(0, weight=1)
-        
-        update_label = ctk.CTkLabel(
-            self.update_banner_frame,
+        ctk.CTkButton(
+            self.install_banner,
+            text="Установить",
+            command=self._install_ffmpeg,
+            width=130,
+            height=32,
+            fg_color="#15803d",
+        ).pack(side="right", padx=20, pady=8)
+
+        # ===== Баннер обновления =====
+        self.update_banner = ctk.CTkFrame(self, fg_color="#0284c7", height=50)
+        self.update_banner.pack(fill="x", padx=20, pady=5)
+        self.update_banner.pack_propagate(False)
+        self.update_banner.pack_forget()
+
+        ctk.CTkLabel(
+            self.update_banner,
             text="🔄 Доступна новая версия FFmpeg",
             font=ctk.CTkFont(size=13, weight="bold"),
-            text_color="white"
-        )
-        update_label.grid(row=0, column=0, padx=20, pady=15, sticky="w")
-        
-        update_btn_frame = ctk.CTkFrame(self.update_banner_frame, fg_color="transparent")
-        update_btn_frame.grid(row=0, column=1, padx=20, pady=15)
-        
+            text_color="white",
+        ).pack(side="left", padx=20, pady=12)
+
         ctk.CTkButton(
-            update_btn_frame,
+            self.update_banner,
             text="Обновить",
-            command=self._start_installation,
-            width=100,
-            height=32,
+            command=self._install_ffmpeg,
+            width=90,
+            height=30,
             fg_color="#15803d",
-            hover_color="#166534",
-            text_color="white",
-            font=ctk.CTkFont(size=13, weight="bold")
-        ).pack(side="left", padx=5)
-        
+        ).pack(side="right", padx=10, pady=10)
+
         ctk.CTkButton(
-            update_btn_frame,
+            self.update_banner,
             text="✕",
-            command=self._dismiss_update,
-            width=32,
-            height=32,
+            command=lambda: self.update_banner.pack_forget(),
+            width=30,
+            height=30,
             fg_color="transparent",
-            hover_color="#dc2626",
-            text_color="white",
-            font=ctk.CTkFont(size=16, weight="bold"),
             border_width=1,
-            border_color="white"
-        ).pack(side="left", padx=5)
+            border_color="white",
+        ).pack(side="right", padx=5, pady=10)
 
-        # ===== Выбор папки =====
-        folder_frame = ctk.CTkFrame(self)
-        folder_frame.grid(row=2, column=0, pady=10, padx=20, sticky="ew")
-        folder_frame.grid_columnconfigure(1, weight=1)
+        # ===== Основной контент =====
+        self.main_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.main_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
-        self.btn_select_folder = ctk.CTkButton(
+        # Панель выбора папки
+        folder_frame = ctk.CTkFrame(self.main_frame)
+        folder_frame.pack(fill="x", pady=(0, 10))
+
+        ctk.CTkButton(
             folder_frame,
             text="📁 Выбрать папку",
-            command=self.select_folder,
-            width=150
-        )
-        self.btn_select_folder.grid(row=0, column=0, padx=10, pady=10)
+            command=self._select_folder,
+            width=150,
+        ).pack(side="left", padx=10, pady=10)
 
-        self.lbl_folder = ctk.CTkLabel(
+        self.folder_lbl = ctk.CTkLabel(
             folder_frame,
             text="Папка не выбрана",
-            text_color="gray"
+            text_color="#6b7280",
         )
-        self.lbl_folder.grid(row=0, column=1, padx=10, pady=10, sticky="w")
+        self.folder_lbl.pack(side="left", padx=15, pady=10)
 
-        # ===== Выбор пресета =====
-        preset_frame = ctk.CTkFrame(self)
-        preset_frame.grid(row=3, column=0, pady=10, padx=20, sticky="ew")
+        # Пресеты
+        preset_frame = ctk.CTkFrame(self.main_frame)
+        preset_frame.pack(fill="x", pady=(0, 10))
 
-        self.preset_var = ctk.StringVar(value="")
-        preset_names = [p.name for p in self.preset_manager.get_all_presets()]
-        
-        self.cmb_preset = ctk.CTkComboBox(
+        ctk.CTkLabel(
             preset_frame,
-            values=preset_names,
+            text="Пресет:",
+            font=ctk.CTkFont(weight="bold"),
+        ).pack(side="left", padx=(10, 10), pady=10)
+
+        self.preset_var = ctk.StringVar()
+        presets = [p.name for p in self.preset_manager.get_all_presets()]
+        self.preset_combo = ctk.CTkComboBox(
+            preset_frame,
+            values=presets,
             variable=self.preset_var,
-            command=self._on_preset_change,
-            width=300
+            command=self._preset_changed,
+            width=320,
         )
-        self.cmb_preset.grid(row=0, column=0, padx=10, pady=10)
-        
+        self.preset_combo.pack(side="left", padx=10, pady=10)
+
         ctk.CTkButton(
             preset_frame,
             text="🛠 Конструктор",
-            command=self.open_preset_builder,
-            width=150
-        ).grid(row=0, column=1, padx=10, pady=10)
+            command=self._preset_builder,
+            width=140,
+        ).pack(side="left", padx=15, pady=10)
 
-        self.lbl_preset_info = ctk.CTkLabel(
+        self.preset_info = ctk.CTkLabel(
             preset_frame,
             text="",
-            text_color="gray",
-            font=ctk.CTkFont(size=11, slant="italic")
+            text_color="#6b7280",
+            font=ctk.CTkFont(size=11, slant="italic"),
         )
-        self.lbl_preset_info.grid(row=1, column=0, columnspan=2, padx=10, pady=5, sticky="w")
+        self.preset_info.pack(side="left", padx=15, pady=10)
 
-        # ===== Список файлов =====
-        files_frame = ctk.CTkFrame(self)
-        files_frame.grid(row=4, column=0, pady=10, padx=20, sticky="nsew")
-        self.grid_rowconfigure(4, weight=1)
+        # Список файлов
+        files_container = ctk.CTkFrame(self.main_frame)
+        files_container.pack(fill="both", expand=True, pady=(0, 10))
 
-        self.files_listbox = ctk.CTkScrollableFrame(files_frame)
-        self.files_listbox.pack(fill="both", expand=True, padx=10, pady=10)
-        
-        self.lbl_file_count = ctk.CTkLabel(
-            files_frame,
+        self.files_frame = ctk.CTkScrollableFrame(files_container)
+        self.files_frame.pack(fill="both", expand=True, padx=0, pady=0)
+
+        self.files_count = ctk.CTkLabel(
+            files_container,
             text="Файлов: 0",
-            text_color="gray"
+            text_color="#6b7280",
         )
-        self.lbl_file_count.pack(padx=10, pady=5, anchor="w")
+        self.files_count.pack(anchor="w", padx=5, pady=5)
 
-        # ===== Прогресс и конвертация =====
-        progress_frame = ctk.CTkFrame(self)
-        progress_frame.grid(row=5, column=0, pady=10, padx=20, sticky="ew")
+        # Прогресс
+        progress_frame = ctk.CTkFrame(self.main_frame)
+        progress_frame.pack(fill="x", pady=(0, 10))
 
-        self.btn_convert = ctk.CTkButton(
+        self.convert_btn = ctk.CTkButton(
             progress_frame,
             text="▶ Конвертировать",
-            command=self.start_conversion,
-            width=200,
-            height=40
+            command=self._convert,
+            width=170,
+            height=40,
+            font=ctk.CTkFont(size=13, weight="bold"),
         )
-        self.btn_convert.grid(row=0, column=0, padx=10, pady=10)
+        self.convert_btn.pack(side="left", padx=10, pady=5)
 
         self.progress_bar = ctk.CTkProgressBar(progress_frame)
-        self.progress_bar.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
+        self.progress_bar.pack(side="left", fill="x", expand=True, padx=10, pady=5)
         self.progress_bar.set(0)
-        progress_frame.grid_columnconfigure(1, weight=1)
 
-        self.lbl_progress = ctk.CTkLabel(progress_frame, text="")
-        self.lbl_progress.grid(row=1, column=0, columnspan=2, padx=10, pady=5, sticky="w")
+        self.progress_lbl = ctk.CTkLabel(
+            progress_frame,
+            text="",
+            text_color="#6b7280",
+            width=200,
+        )
+        self.progress_lbl.pack(side="right", padx=10, pady=5)
 
-        self.lbl_status = ctk.CTkLabel(progress_frame, text="", text_color="green")
-        self.lbl_status.grid(row=2, column=0, columnspan=2, padx=10, pady=5, sticky="w")
+        # Статус конвертации
+        self.convert_status = ctk.CTkLabel(
+            self.main_frame,
+            text="",
+            text_color="#22c55e",
+            font=ctk.CTkFont(size=11),
+        )
+        self.convert_status.pack(anchor="w", padx=5, pady=(0, 10))
 
-        # ===== Лог =====
-        log_frame = ctk.CTkFrame(self)
-        log_frame.grid(row=6, column=0, pady=10, padx=20, sticky="ew")
+        # Лог
+        log_frame = ctk.CTkFrame(self.main_frame)
+        log_frame.pack(fill="x")
 
         ctk.CTkLabel(
             log_frame,
-            text="Лог операций:",
-            font=ctk.CTkFont(size=14, weight="bold")
-        ).pack(anchor="w", padx=10, pady=5)
+            text="Лог:",
+            font=ctk.CTkFont(size=12, weight="bold"),
+        ).pack(anchor="w", padx=5, pady=(5, 0))
 
-        self.log_text = ctk.CTkTextbox(log_frame, height=100, state="disabled")
-        self.log_text.pack(fill="x", padx=10, pady=10)
-        
-        # Скрываем баннер установки изначально (покажется если FFmpeg не найден)
-        if hasattr(self, 'install_banner_frame'):
-            self.install_banner_frame.grid_remove()
-        
-        # Скрываем баннер обновления изначально
-        if hasattr(self, 'update_banner_frame'):
-            self.update_banner_frame.grid_remove()
+        self.log_txt = ctk.CTkTextbox(log_frame, height=60, state="disabled")
+        self.log_txt.pack(fill="x", padx=5, pady=5)
 
-    # ========== Установка FFmpeg ==========
-    
-    def _start_installation(self):
-        """Начать установку FFmpeg"""
-        if self.is_installing:
-            return
-        
-        self.is_installing = True
-        self.install_progress = 0
-        
-        # Обновляем кнопку с прогрессом
-        self._update_install_button()
-        
-        # Скрываем баннер обновления если есть
-        if hasattr(self, 'update_banner_frame'):
-            self.update_banner_frame.grid_remove()
-        
-        # Запускаем установку в потоке
-        thread = threading.Thread(target=self._run_installation, daemon=True)
-        thread.start()
-    
-    def _update_install_button(self):
-        """Обновить кнопку установки с прогрессом"""
-        if self.is_installing:
-            percent = int(self.install_progress * 100)
-            self.btn_install_banner.configure(
-                text=f"⏳ Установка... {percent}%",
-                fg_color="#059669",  # Зелёный с прогрессом
-                state="disabled"
-            )
-        else:
-            self.btn_install_banner.configure(
-                text="Установить FFmpeg",
-                fg_color="#15803d",
-                state="normal"
-            )
-
-    def _run_installation(self):
-        """Установка FFmpeg в фоне"""
-        def progress_callback(status: str, percent: float):
-            self.install_progress = percent / 100.0  # Convert to 0-1
-            self.after(0, self._update_install_button)
-        
-        def on_complete(success: bool):
-            self.is_installing = False
-            
-            if success:
-                self.after(0, lambda: self.btn_install_banner.configure(
-                    text="✓ Установлено",
-                    fg_color="green",
-                    state="disabled"
-                ))
-                # Обновляем статус через 2 секунды
-                self.after(2000, self._after_install_success)
-            else:
-                self.after(0, lambda: self.btn_install_banner.configure(
-                    text="Установить снова",
-                    fg_color="#dc2626",  # Красный
-                    state="normal"
-                ))
-        
-        success = FFmpegInstaller.install(progress_callback)
-        self.after(0, lambda: on_complete(success))
-
-    def _after_install_success(self):
-        """После успешной установки"""
-        self._check_ffmpeg_and_update()
-        self.btn_install_banner.configure(state="normal")
-        
-        # Обновляем статус вместо messagebox
-        self.lbl_status.configure(
-            text=f"✓ FFmpeg успешно установлен! Версия: {FFmpegInstaller.get_ffmpeg_version()}",
-            text_color="green"
-        )
-        self._add_log_entry(f"FFmpeg успешно установлен. Версия: {FFmpegInstaller.get_ffmpeg_version()}")
-
-    def _dismiss_update(self):
-        """Скрыть баннер обновления"""
-        if hasattr(self, 'update_banner_frame'):
-            self.update_banner_frame.grid_remove()
-
-    def _check_for_updates(self):
-        """Фоновая проверка обновлений"""
-        if FFmpegUpdater.should_notify():
-            self.has_update = True
-            if hasattr(self, 'update_banner_frame'):
-                self.update_banner_frame.grid()
-
-    # ========== Контекстное меню FFmpeg ==========
-    
-    def _create_ffmpeg_context_menu(self):
-        """Контекстное меню для управления FFmpeg"""
-        if not self.ffmpeg_available:
-            return
-        
-        # Создаём окно с фиксированным размером
-        dialog = ctk.CTkToplevel(self)
-        dialog.title("Управление FFmpeg")
-        dialog.geometry("500x600")
-        dialog.resizable(False, False)
-        dialog.transient(self)
-        dialog.grab_set()
-        
-        # Главный контейнер
-        main_frame = ctk.CTkFrame(dialog)
-        main_frame.pack(fill="both", expand=True, padx=20, pady=20)
-        
-        # Заголовок
-        ctk.CTkLabel(
-            main_frame,
-            text=f"✓ FFmpeg {self.ffmpeg_version}",
-            font=ctk.CTkFont(size=20, weight="bold"),
-            text_color="green"
-        ).pack(pady=(0, 20))
-        
-        # Информация
-        info_frame = ctk.CTkFrame(main_frame, fg_color="#1f2937")
-        info_frame.pack(fill="x", pady=10)
-        
-        install_date = FFmpegInstaller.get_install_date()
-        install_dir = str(FFmpegInstaller.INSTALL_DIR)
-        
-        ctk.CTkLabel(
-            info_frame,
-            text=f"📅 Установлен: {install_date}",
-            justify="left",
-            text_color="#9ca3af"
-        ).pack(anchor="w", padx=20, pady=15)
-        
-        ctk.CTkLabel(
-            info_frame,
-            text=f"📁 Путь: {install_dir}",
-            justify="left",
-            wraplength=440,
-            text_color="#9ca3af"
-        ).pack(anchor="w", padx=20, pady=(0,15))
-        
-        # Статус обновлений
-        self.update_status_label = ctk.CTkLabel(main_frame, text="", font=ctk.CTkFont(size=12), wraplength=440)
-        self.update_status_label.pack(pady=10)
-        
-        # Кнопки
-        ctk.CTkButton(
-            main_frame,
-            text="📁 Открыть папку",
-            command=lambda: subprocess.run(["explorer", install_dir]),
-            height=44,
-            fg_color="#2563eb",
-            hover_color="#1d4ed8",
-            text_color="white",
-            font=ctk.CTkFont(size=14)
-        ).pack(fill="x", pady=8)
-        
-        self.btn_check_update = ctk.CTkButton(main_frame, text="🔄 Проверить обновления", command=lambda: self._manual_check_update(dialog), height=44, fg_color="#d97706", hover_color="#b45309", text_color="white", font=ctk.CTkFont(size=14))
-        self.btn_check_update.pack(fill="x", pady=8)
-        
-        ctk.CTkButton(
-            main_frame,
-            text="🗑️ Удалить FFmpeg",
-            command=lambda: self._delete_ffmpeg_no_confirm(dialog),
-            height=44,
-            fg_color="#dc2626",
-            hover_color="#b91c1c",
-            text_color="white",
-            font=ctk.CTkFont(size=14)
-        ).pack(fill="x", pady=8)
-        
-        # Разделитель
-        ctk.CTkFrame(main_frame, height=2, fg_color="#374151").pack(fill="x", pady=15)
-        
-        ctk.CTkButton(
-            main_frame,
-            text="Закрыть",
-            command=dialog.destroy,
-            height=40,
-            fg_color="transparent",
-            border_width=2,
-            border_color="#4b5563",
-            text_color="white",
-            hover_color="#374151",
-            font=ctk.CTkFont(size=14)
-        ).pack(pady=(0, 10))
-
-    def _manual_check_update(self, dialog):
-        """Ручная проверка обновлений"""
-        # Блокируем кнопку
-        self.btn_check_update.configure(state="disabled", text="⏳ Проверка...")
-        
-        # Показываем статус
-        self.update_status_label.configure(
-            text="🔄 Проверка обновлений...",
-            text_color="#fcd34d"
-        )
-        
-        def check_thread():
-            try:
-                update_info = FFmpegUpdater.check_for_update()
-                dialog.after(0, lambda: self._show_update_result(dialog, update_info))
-            except Exception as e:
-                error_msg = str(e)
-                dialog.after(0, lambda: self._show_update_error(dialog, error_msg))
-        
-        threading.Thread(target=check_thread, daemon=True).start()
-    
-    def _show_update_result(self, dialog, update_info):
-        """Показать результат проверки"""
-        self.btn_check_update.configure(state="normal", text="🔄 Проверить обновления")
-        
-        if update_info:
-            # Найдено обновление
-            self.update_status_label.configure(
-                text=f"🔄 Доступна версия {update_info['version']} от {update_info['date']}",
-                text_color="#fcd34d"
-            )
-            
-            # Добавляем кнопку установки
-            install_btn = ctk.CTkButton(
-                dialog,
-                text="⬇️ Установить обновление",
-                command=lambda: [dialog.destroy(), self._start_installation()],
-                height=44,
-                fg_color="#15803d",
-                hover_color="#166534",
-                text_color="white",
-                font=ctk.CTkFont(size=14, weight="bold")
-            )
-            install_btn.pack(pady=10)
-        else:
-            # Обновлений нет
-            self.update_status_label.configure(
-                text="✓ Установлена последняя версия",
-                text_color="#86efac"
-            )
-    
-    def _show_update_error(self, dialog, error_msg):
-        """Показать ошибку проверки"""
-        self.btn_check_update.configure(state="normal", text="🔄 Проверить обновления")
-        
-        self.update_status_label.configure(
-            text=f"⚠️ Ошибка: {error_msg}",
-            text_color="#fca5a5"
-        )
-    
-    def _uninstall_ffmpeg(self, dialog):
-        """Удалить FFmpeg"""
-        # Вместо messagebox.askyesno используем статусную панель для подтверждения
-        self.lbl_status.configure(
-            text="⚠️ Подтвердите удаление FFmpeg (приложение не сможет работать без него)",
-            text_color="orange"
-        )
-        
-        # Добавляем кнопки подтверждения в статусную панель
-        confirm_frame = ctk.CTkFrame(self)
-        confirm_frame.grid(row=7, column=0, pady=5, padx=20, sticky="ew")
-        
-        def confirm_uninstall():
-            success = FFmpegInstaller.uninstall()
-            if success:
-                self.lbl_status.configure(
-                    text="✓ FFmpeg успешно удалён",
-                    text_color="green"
-                )
-                self._add_log_entry("FFmpeg успешно удалён")
-                dialog.destroy()
-                self._check_ffmpeg_and_update()
-            else:
-                self.lbl_status.configure(
-                    text="✗ Не удалось удалить FFmpeg",
-                    text_color="red"
-                )
-                self._add_log_entry("Ошибка: Не удалось удалить FFmpeg")
-            
-            confirm_frame.grid_remove()
-        
-        def cancel_uninstall():
-            self.lbl_status.configure(
-                text="Удаление отменено",
-                text_color="gray"
-            )
-            confirm_frame.grid_remove()
-        
-        ctk.CTkButton(
-            confirm_frame,
-            text="Удалить",
-            command=confirm_uninstall,
-            width=100,
-            fg_color="#dc2626",
-            hover_color="#b91c1c",
-            text_color="white"
-        ).pack(side="left", padx=5)
-        
-        ctk.CTkButton(
-            confirm_frame,
-            text="Отмена",
-            command=cancel_uninstall,
-            width=100,
-            fg_color="#64748b",
-            hover_color="#475569",
-            text_color="white"
-        ).pack(side="left", padx=5)
-
-    def _on_preset_change(self, value):
-        if not value:
-            return
-        preset = self.preset_manager.get_preset_by_name(value)
-        if preset:
-            self.selected_preset = preset
-            self.lbl_preset_info.configure(text=preset.description)
-
-    def select_folder(self):
-        folder = filedialog.askdirectory(title="Выберите папку с файлами")
+    def _select_folder(self):
+        folder = filedialog.askdirectory(title="Папка с файлами")
         if folder:
             self.selected_folder = folder
-            self.lbl_folder.configure(text=folder)
+            self.folder_lbl.configure(text=folder)
             self.files_list = []
 
-            for widget in self.files_listbox.winfo_children():
-                widget.destroy()
+            for w in self.files_frame.winfo_children():
+                w.destroy()
 
-            video_extensions = {'.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm', '.m4v'}
-            image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff'}
+            exts = {".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".m4v",
+                    ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
 
-            for file in Path(folder).iterdir():
-                if file.is_file() and file.suffix.lower() in video_extensions | image_extensions:
-                    self.files_list.append(str(file))
-                    file_frame = ctk.CTkFrame(self.files_listbox)
-                    file_frame.pack(fill="x", pady=2)
-                    
-                    ctk.CTkLabel(
-                        file_frame,
-                        text=file.name,
-                        width=600,
-                        anchor="w"
-                    ).pack(side="left", padx=10, pady=5)
-                    
-                    ctk.CTkLabel(
-                        file_frame,
-                        text=f"{file.stat().st_size // 1024} KB",
-                        text_color="gray",
-                        width=100
-                    ).pack(side="right", padx=10, pady=5)
+            for f in Path(folder).iterdir():
+                if f.is_file() and f.suffix.lower() in exts:
+                    self.files_list.append(str(f))
+                    row = ctk.CTkFrame(self.files_frame)
+                    row.pack(fill="x", pady=1, padx=5)
+                    ctk.CTkLabel(row, text=f.name, anchor="w").pack(side="left", padx=10, pady=4)
+                    ctk.CTkLabel(row, text=f"{f.stat().st_size // 1024} KB", text_color="#6b7280").pack(side="right", padx=10, pady=4)
 
-            self.lbl_file_count.configure(text=f"Файлов: {len(self.files_list)}")
+            self.files_count.configure(text=f"Файлов: {len(self.files_list)}")
 
-    def log_message(self, message: str):
-        self.log_text.configure(state="normal")
-        self.log_text.insert("end", f"{message}\n")
-        self.log_text.see("end")
-        self.log_text.configure(state="disabled")
+    def _preset_changed(self, value):
+        if value:
+            p = self.preset_manager.get_preset_by_name(value)
+            if p:
+                self.selected_preset = p
+                self.preset_info.configure(text=p.description)
 
-    def start_conversion(self):
+    def _install_ffmpeg(self):
+        if self.is_installing:
+            return
+        self.is_installing = True
+        self.update_banner.pack_forget()
+
+        def on_progress(s, pct):
+            pass  # Не обновляем кнопку во время движения
+
+        def done(ok):
+            self.is_installing = False
+            self._check_ffmpeg()
+            if ok:
+                self._log(f"✓ FFmpeg установлен: {FFmpegInstaller.get_ffmpeg_version()}")
+
+        threading.Thread(target=lambda: done(FFmpegInstaller.install(on_progress)), daemon=True).start()
+
+    def _ffmpeg_menu(self):
         if not self.ffmpeg_available:
-            self.lbl_status.configure(
-                text="✗ FFmpeg не найден! Установите FFmpeg для продолжения.",
-                text_color="red"
-            )
-            self._add_log_entry("Ошибка: FFmpeg не найден")
             return
-            
-        if not self.selected_folder or not self.files_list:
-            self.lbl_status.configure(
-                text="⚠️ Выберите папку с файлами!",
-                text_color="orange"
+
+        dlg = ctk.CTkToplevel(self)
+        dlg.title("FFmpeg")
+        dlg.geometry("400x400")
+        dlg.resizable(False, False)
+        dlg.transient(self)
+
+        f = ctk.CTkFrame(dlg)
+        f.pack(fill="both", expand=True, padx=20, pady=20)
+
+        ctk.CTkLabel(
+            f,
+            text=f"✓ FFmpeg {self.ffmpeg_version}",
+            font=ctk.CTkFont(size=16, weight="bold"),
+            text_color="#22c55e",
+        ).pack(pady=15)
+
+        ctk.CTkLabel(
+            f,
+            text=f"Путь: {FFmpegInstaller.INSTALL_DIR}",
+            text_color="#9ca3af",
+            wraplength=350,
+            justify="left",
+        ).pack(anchor="w", pady=10)
+
+        ctk.CTkButton(
+            f,
+            text="📁 Открыть папку",
+            command=lambda: subprocess.run(["explorer", str(FFmpegInstaller.INSTALL_DIR)]),
+            width=180,
+        ).pack(pady=8)
+
+        ctk.CTkButton(
+            f,
+            text="🗑️ Удалить",
+            command=lambda: self._uninstall(dlg),
+            width=180,
+            fg_color="#dc2626",
+        ).pack(pady=8)
+
+        ctk.CTkButton(
+            f,
+            text="Закрыть",
+            command=dlg.destroy,
+            width=180,
+            fg_color="transparent",
+            border_width=2,
+        ).pack(pady=15)
+
+    def _uninstall(self, dlg):
+        if FFmpegInstaller.uninstall():
+            dlg.destroy()
+            self._check_ffmpeg()
+            self._log("✓ FFmpeg удалён")
+
+    def _preset_builder(self):
+        dlg = ctk.CTkToplevel(self)
+        dlg.title("Конструктор пресетов")
+        dlg.geometry("480x620")
+        dlg.resizable(False, False)
+        dlg.transient(self)
+        dlg.grab_set()
+
+        f = ctk.CTkFrame(dlg)
+        f.pack(fill="both", expand=True, padx=20, pady=20)
+
+        ctk.CTkLabel(
+            f,
+            text="Новый пресет",
+            font=ctk.CTkFont(size=17, weight="bold"),
+        ).pack(pady=(0, 15))
+
+        def add_row(parent, label, widget):
+            row = ctk.CTkFrame(parent, fg_color="transparent")
+            row.pack(fill="x", pady=4)
+            ctk.CTkLabel(row, text=label, width=120).pack(side="left")
+            widget.pack(side="left", fill="x", expand=True)
+            return row
+
+        name = ctk.CTkEntry(f, placeholder_text="Название", width=300)
+        add_row(f, "Название:", name)
+
+        desc = ctk.CTkEntry(f, placeholder_text="Описание", width=300)
+        add_row(f, "Описание:", desc)
+
+        hw = ctk.CTkComboBox(f, values=["nvenc", "qsv", "amf", "cpu"], width=300)
+        hw.set("nvenc")
+        add_row(f, "Ускорение:", hw)
+
+        codec = ctk.CTkComboBox(f, values=["h264", "hevc"], width=300)
+        codec.set("h264")
+        add_row(f, "Кодек:", codec)
+
+        cq = ctk.CTkEntry(f, placeholder_text="20", width=300)
+        add_row(f, "CQ (1-51):", cq)
+
+        scale = ctk.CTkComboBox(f, values=["", "1920:-2", "1280:-2", "3840:-2"], width=300)
+        scale.set("")
+        add_row(f, "Масштаб:", scale)
+
+        audio = ctk.CTkComboBox(f, values=["2", "6", "8"], width=300)
+        audio.set("2")
+        add_row(f, "Аудио каналы:", audio)
+
+        container = ctk.CTkComboBox(f, values=["mkv", "mp4"], width=300)
+        container.set("mkv")
+        add_row(f, "Контейнер:", container)
+
+        subs = ctk.CTkCheckBox(f, text="Удалить субтитры")
+        subs.pack(anchor="w", pady=10)
+
+        def save():
+            n = name.get().strip()
+            if not n:
+                return
+
+            h = hw.get() if hw.get() != "cpu" else None
+            p = Preset(
+                id=f"custom_{n.lower().replace(' ', '_')}",
+                name=n,
+                description=desc.get().strip(),
+                hw_accelerator=h,
+                codec_type=codec.get(),
+                cq=int(cq.get()) if cq.get().isdigit() else 20,
+                scale=scale.get() if scale.get() else None,
+                audio_channels=int(audio.get()),
+                remove_subtitles=subs.get(),
+                container=container.get(),
             )
-            self._add_log_entry("Предупреждение: Папка с файлами не выбрана")
+            self.preset_manager.add_preset(p)
+            self.preset_combo.configure(values=[x.name for x in self.preset_manager.get_all_presets()])
+            self._log(f"✓ Пресет: {n}")
+            dlg.destroy()
+
+        btns = ctk.CTkFrame(f, fg_color="transparent")
+        btns.pack(pady=15)
+
+        ctk.CTkButton(btns, text="Сохранить", command=save, width=130, fg_color="#15803d").pack(side="left", padx=10)
+        ctk.CTkButton(btns, text="Отмена", command=dlg.destroy, width=130, fg_color="transparent", border_width=2).pack(side="left", padx=10)
+
+    def _convert(self):
+        if not self.ffmpeg_available:
+            self.convert_status.configure(text="✗ FFmpeg не найден", text_color="#ef4444")
             return
-            
+        if not self.files_list:
+            self.convert_status.configure(text="⚠️ Нет файлов", text_color="#f59e0b")
+            return
         if not self.selected_preset:
-            self.lbl_status.configure(
-                text="⚠️ Выберите пресет конвертации!",
-                text_color="orange"
-            )
-            self._add_log_entry("Предупреждение: Пресет конвертации не выбран")
+            self.convert_status.configure(text="⚠️ Нет пресета", text_color="#f59e0b")
             return
 
-        self.is_converting = True
-        self.btn_convert.configure(state="disabled")
-        self.btn_select_folder.configure(state="disabled")
-        self.cmb_preset.configure(state="disabled")
+        self.convert_btn.configure(state="disabled")
         self.progress_bar.set(0)
-        self.lbl_status.configure(text="Конвертация...", text_color="orange")
+        self.convert_status.configure(text="Конвертация...", text_color="#f59e0b")
 
-        thread = threading.Thread(target=self._run_conversion, daemon=True)
-        thread.start()
+        threading.Thread(target=self._run_convert, daemon=True).start()
 
-    def _run_conversion(self):
-        # Логика конвертации
-        pass
+    def _run_convert(self):
+        out = Path(self.selected_folder) / "output"
+        out.mkdir(exist_ok=True)
 
-    def open_preset_builder(self):
-        # Конструктор пресетов
-        pass
+        ok = 0
+        err = 0
+
+        for i, file in enumerate(self.files_list):
+            name = Path(file).name
+            self._log(f"▶ {name}")
+
+            ext = self.selected_preset.container if self.selected_preset.container else "mkv"
+            output = str(out / f"{Path(file).stem}.{ext}")
+
+            try:
+                if self.ffmpeg.convert(file, output, self.selected_preset):
+                    ok += 1
+                    self._log(f"✓ {name}")
+                else:
+                    err += 1
+                    self._log(f"✗ {name}")
+            except Exception as e:
+                err += 1
+                self._log(f"✗ {name}: {e}")
+
+            pct = (i + 1) / len(self.files_list)
+            self.after(0, lambda p=pct, n=name: self._progress(p, n))
+
+        self.after(0, lambda: self._done(ok, err))
+
+    def _progress(self, val, name):
+        self.progress_bar.set(val)
+        self.progress_lbl.configure(text=name)
+
+    def _done(self, ok, err):
+        self.convert_btn.configure(state="normal")
+        total = ok + err
+        if err == 0:
+            self.convert_status.configure(text=f"✓ Готово: {ok}/{total}", text_color="#22c55e")
+        else:
+            self.convert_status.configure(text=f"⚠️ {ok} успешно, {err} ошибок", text_color="#f59e0b")
+        self._log(f"=== {ok} успешно, {err} ошибок ===")
+
+    def _log(self, msg):
+        if hasattr(self, "log_txt"):
+            self.log_txt.configure(state="normal")
+            t = datetime.datetime.now().strftime("%H:%M:%S")
+            self.log_txt.insert("end", f"[{t}] {msg}\n")
+            self.log_txt.see("end")
+            self.log_txt.configure(state="disabled")
+
+
+def main():
+    app = ConverterApp()
+    app.mainloop()
 
 
 if __name__ == "__main__":
-    app = ConverterApp()
-    app.mainloop()
+    main()

@@ -9,7 +9,8 @@ class Preset:
     id: str
     name: str
     description: str
-    video_codec: str
+    hw_accelerator: Optional[str] = None  # nvenc, qsv, amf, None для CPU
+    codec_type: str = "h264"  # h264 или hevc
     audio_codec: str = "aac"
     audio_channels: int = 2
     audio_bitrate: str = "192k"
@@ -20,12 +21,34 @@ class Preset:
     container: str = "mkv"
     extra_args: list[str] = field(default_factory=list)
 
+    @property
+    def video_codec(self) -> str:
+        """Генерирует название кодека на основе hw_accelerator и codec_type"""
+        if self.hw_accelerator:
+            return f"{self.codec_type}_{self.hw_accelerator}"
+        return "libx264"
+
+    @video_codec.setter
+    def video_codec(self, value: str):
+        """Парсит название кодека для обратной совместимости"""
+        if value == "libx264":
+            self.hw_accelerator = None
+            self.codec_type = "h264"
+        elif "_" in value:
+            parts = value.rsplit("_", 1)
+            self.codec_type = parts[0]
+            self.hw_accelerator = parts[1]
+        else:
+            self.codec_type = value
+            self.hw_accelerator = None
+
     def to_dict(self) -> dict:
         return {
             "id": self.id,
             "name": self.name,
             "description": self.description,
-            "video_codec": self.video_codec,
+            "hw_accelerator": self.hw_accelerator,
+            "codec_type": self.codec_type,
             "audio_codec": self.audio_codec,
             "audio_channels": self.audio_channels,
             "audio_bitrate": self.audio_bitrate,
@@ -39,23 +62,36 @@ class Preset:
 
     @classmethod
     def from_dict(cls, data: dict) -> "Preset":
+        # Поддержка старого формата с video_codec
+        if "video_codec" in data and not data.get("hw_accelerator"):
+            vc = data.pop("video_codec")
+            if vc == "libx264":
+                data["hw_accelerator"] = None
+                data["codec_type"] = "h264"
+            elif "_" in vc:
+                parts = vc.rsplit("_", 1)
+                data["codec_type"] = parts[0]
+                data["hw_accelerator"] = parts[1]
+        
         return cls(**data)
 
 
 DEFAULT_PRESETS = [
-    # NVIDIA presets
+    # NVIDIA presets - H.264
     Preset(
         id="h264_nvenc_standard",
         name="H.264 NVIDIA Стандарт",
         description="H.264 NVENC, высокое качество (CQ 20)",
-        video_codec="h264_nvenc",
+        hw_accelerator="nvenc",
+        codec_type="h264",
         cq=20,
     ),
     Preset(
         id="h264_nvenc_light",
         name="H.264 NVIDIA Лёгкий",
         description="H.264 NVENC, 1920x, меньший размер (CQ 30)",
-        video_codec="h264_nvenc",
+        hw_accelerator="nvenc",
+        codec_type="h264",
         cq=30,
         scale="1920:-2",
     ),
@@ -63,23 +99,27 @@ DEFAULT_PRESETS = [
         id="h264_nvenc_mp4",
         name="H.264 NVIDIA MP4",
         description="H.264 NVENC, MP4 контейнер, без субтитров",
-        video_codec="h264_nvenc",
+        hw_accelerator="nvenc",
+        codec_type="h264",
         cq=20,
         remove_subtitles=True,
         container="mp4",
     ),
+    # NVIDIA presets - H.265
     Preset(
         id="hevc_nvenc_standard",
         name="H.265 NVIDIA Стандарт",
         description="HEVC NVENC, высокое качество (CQ 20)",
-        video_codec="hevc_nvenc",
+        hw_accelerator="nvenc",
+        codec_type="hevc",
         cq=20,
     ),
     Preset(
         id="hevc_nvenc_light",
         name="H.265 NVIDIA Лёгкий",
         description="HEVC NVENC, 1920x, меньший размер (CQ 30)",
-        video_codec="hevc_nvenc",
+        hw_accelerator="nvenc",
+        codec_type="hevc",
         cq=30,
         scale="1920:-2",
     ),
@@ -87,70 +127,81 @@ DEFAULT_PRESETS = [
         id="hevc_nvenc_mp4",
         name="H.265 NVIDIA MP4",
         description="HEVC NVENC, MP4 контейнер, без субтитров",
-        video_codec="hevc_nvenc",
+        hw_accelerator="nvenc",
+        codec_type="hevc",
         cq=20,
         remove_subtitles=True,
         container="mp4",
     ),
-    # Intel QuickSync presets
+    # Intel QuickSync - H.264
     Preset(
         id="h264_qsv_standard",
         name="H.264 Intel QuickSync",
         description="H.264 QSV, высокое качество (CQ 20)",
-        video_codec="h264_qsv",
+        hw_accelerator="qsv",
+        codec_type="h264",
         cq=20,
     ),
     Preset(
         id="h264_qsv_light",
         name="H.264 Intel QuickSync Лёгкий",
         description="H.264 QSV, 1920x, меньший размер (CQ 30)",
-        video_codec="h264_qsv",
+        hw_accelerator="qsv",
+        codec_type="h264",
         cq=30,
         scale="1920:-2",
     ),
+    # Intel QuickSync - H.265
     Preset(
         id="hevc_qsv_standard",
         name="H.265 Intel QuickSync",
         description="HEVC QSV, высокое качество (CQ 20)",
-        video_codec="hevc_qsv",
+        hw_accelerator="qsv",
+        codec_type="hevc",
         cq=20,
     ),
     Preset(
         id="hevc_qsv_light",
         name="H.265 Intel QuickSync Лёгкий",
         description="HEVC QSV, 1920x, меньший размер (CQ 30)",
-        video_codec="hevc_qsv",
+        hw_accelerator="qsv",
+        codec_type="hevc",
         cq=30,
         scale="1920:-2",
     ),
-    # AMD AMF presets
+    # AMD AMF - H.264
     Preset(
         id="h264_amf_standard",
         name="H.264 AMD AMF",
         description="H.264 AMF, высокое качество (CQ 20)",
-        video_codec="h264_amf",
+        hw_accelerator="amf",
+        codec_type="h264",
         cq=20,
     ),
     Preset(
         id="h264_amf_light",
         name="H.264 AMD AMF Лёгкий",
         description="H.264 AMF, 1920x, меньший размер (CQ 30)",
-        video_codec="h264_amf",
+        hw_accelerator="amf",
+        codec_type="h264",
         cq=30,
         scale="1920:-2",
     ),
+    # AMD AMF - H.265
     Preset(
         id="hevc_amf_standard",
         name="H.265 AMD AMF",
         description="HEVC AMF, высокое качество (CQ 20)",
-        video_codec="hevc_amf",
+        hw_accelerator="amf",
+        codec_type="hevc",
         cq=20,
     ),
     Preset(
         id="hevc_amf_light",
         name="H.265 AMD AMF Лёгкий",
         description="HEVC AMF, 1920x, меньший размер (CQ 30)",
-        video_codec="hevc_amf",
+        hw_accelerator="amf",
+        codec_type="hevc",
         cq=30,
         scale="1920:-2",
     ),
@@ -200,6 +251,13 @@ class PresetManager:
         self.presets = [p for p in self.presets if p.id != preset_id]
         self.save_custom_presets()
         return True
+
+    def update_preset(self, updated_preset: Preset):
+        for i, p in enumerate(self.presets):
+            if p.id == updated_preset.id:
+                self.presets[i] = updated_preset
+                break
+        self.save_custom_presets()
 
     def get_all_presets(self) -> list[Preset]:
         return self.presets

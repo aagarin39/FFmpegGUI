@@ -1,9 +1,12 @@
 import asyncio
 import json
 import platform
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Callable
+
+from .presets import Preset
 
 
 @dataclass
@@ -91,7 +94,71 @@ class FFmpegWrapper:
             has_subtitles=bool(subtitle_stream)
         )
 
-    async def convert(
+    def convert(self, input_file: str, output_file: str, 
+            preset: Preset | None = None) -> bool:
+        """Конвертация с использованием Preset объекта"""
+        if preset:
+            preset_args = self._generate_preset_args(preset)
+        else:
+            return False
+        
+        cmd = [self.ffmpeg_path, "-y", "-i", input_file] + preset_args + [output_file]
+        
+        try:
+            process = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            return process.returncode == 0
+        except Exception:
+            return False
+    
+    def _generate_preset_args(self, preset: Preset) -> list[str]:
+        """Генерация аргументов FFmpeg на основе пресета"""
+        args = []
+        
+        # Видео кодек с учётом hardware accelerator
+        if preset.hw_accelerator == "nvenc":
+            args.extend(["-c:v", f"{preset.codec_type}_nvenc"])
+            args.extend(["-preset", "p3", "-rc", "vbr", "-cq", str(preset.cq)])
+            args.extend(["-g", "250", "-tune", "hq", "-rc-lookahead", "60"])
+        elif preset.hw_accelerator == "qsv":
+            args.extend(["-c:v", f"{preset.codec_type}_qsv"])
+            args.extend(["-preset", "fast", "-q", str(preset.cq)])
+            args.extend(["-look_ahead", "1", "-b_ref_mode", "middle"])
+        elif preset.hw_accelerator == "amf":
+            args.extend(["-c:v", f"{preset.codec_type}_amf"])
+            # AMF использует qp_i/qp_p вместо cq для качества
+            quality = "quality" if preset.cq <= 20 else ("balanced" if preset.cq <= 30 else "speed")
+            args.extend(["-quality", quality, "-qp_i", str(preset.cq), "-qp_p", str(preset.cq)])
+            args.append("-g")
+            args.append("250")
+        else:  # libx264 (CPU)
+            args.extend(["-c:v", "libx264", "-preset", "medium", "-crf", str(preset.cq)])
+        
+        # Масштабирование с форматом yuv420p для совместимости
+        if preset.scale:
+            args.extend(["-vf", f"scale={preset.scale},setsar=1:1,format=yuv420p"])
+        else:
+            args.extend(["-vf", "format=yuv420p"])
+        
+        # Удаление субтитров
+        if preset.remove_subtitles:
+            args.append("-sn")
+        
+        # Аудио с логикой из batch скриптов
+        channels = preset.audio_channels
+        if channels == 6:
+            args.extend(["-c:a", "aac", "-ac", "6", "-b:a", "448k"])
+        elif channels == 8:
+            args.extend(["-c:a", "aac", "-ac", "8", "-b:a", "512k"])
+        else:
+            args.extend(["-c:a", "aac", "-ac", "2", "-b:a", preset.audio_bitrate])
+        
+        # Контейнер
+        if preset.container == "mp4":
+            args.extend(["-movflags", "+faststart"])
+        
+        return args
+
+    async def convert_async(
         self,
         input_file: str,
         output_file: str,

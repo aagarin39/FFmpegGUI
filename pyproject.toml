@@ -26,9 +26,12 @@ classifiers = [
     "Topic :: Multimedia :: Video :: Conversion",
 ]
 dependencies = [
-    "flet>=0.21.0",
+    "customtkinter>=5.2.0",
+    "Pillow>=10.0.0",
+    "darkdetect>=0.8.0",
     "pydantic>=2.0.0",
     "aiofiles>=23.0.0",
+    "requests>=2.31.0",
 ]
 
 [project.optional-dependencies]
@@ -38,16 +41,16 @@ dev = [
     "black>=23.0.0",
     "ruff>=0.1.0",
 ]
+
 build = [
     "pyinstaller>=6.0.0",
 ]
 
 [project.scripts]
-ffmpeggui = "src.main:main"
 ffmpeggui-build = "build:main"
 
 [project.gui-scripts]
-ffmpeggui = "src.main:main"
+ffmpeggui = "src.main_ctk:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
