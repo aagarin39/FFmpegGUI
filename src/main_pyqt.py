@@ -57,12 +57,21 @@ class WorkerThread(QThread):
         self.output_folder = output_folder
         self.preset = preset
         self.ffmpeg = ffmpeg
+        self._cancel_flag = False
+    
+    def cancel(self):
+        """Отмена конвертации"""
+        self._cancel_flag = True
     
     def run(self):
         ok = 0
         err = 0
         
         for i, file in enumerate(self.files):
+            if self._cancel_flag:
+                self.log.emit("⚠️ Конвертация отменена пользователем")
+                break
+            
             name = Path(file).name
             self.log.emit(f"▶ {name}")
             
@@ -530,7 +539,7 @@ class MainWindow(QMainWindow):
         self.preset_manager = PresetManager()
         
         self.selected_folder = None
-        self.files_list = []
+        self.files_list = []  # Список кортежей (path, checkbox)
         self.selected_preset = None
         self.worker = None
         self.installer = None
@@ -651,9 +660,25 @@ class MainWindow(QMainWindow):
         scroll.setWidget(self.files_container)
         files_layout.addWidget(scroll)
         
-        self.files_count = QLabel("Файлов: 0")
+        self.files_count = QLabel("Файлов: 0/0")
         self.files_count.setStyleSheet("color: #6b7280;")
-        files_layout.addWidget(self.files_count)
+        
+        # Кнопки управления выделением
+        select_btns = QHBoxLayout()
+        select_btns.addWidget(self.files_count)
+        select_btns.addStretch()
+        
+        select_all_btn = QPushButton("✓ Все")
+        select_all_btn.setMaximumWidth(80)
+        select_all_btn.clicked.connect(self._select_all_files)
+        select_btns.addWidget(select_all_btn)
+        
+        deselect_all_btn = QPushButton("✗ Все")
+        deselect_all_btn.setMaximumWidth(80)
+        deselect_all_btn.clicked.connect(self._deselect_all_files)
+        select_btns.addWidget(deselect_all_btn)
+        
+        files_layout.addLayout(select_btns)
         
         layout.addWidget(files_group, 1)
         
@@ -666,6 +691,13 @@ class MainWindow(QMainWindow):
         self.convert_btn.setStyleSheet("QPushButton { background-color: #2563eb; color: white; font-size: 13px; font-weight: bold; border-radius: 4px; padding: 10px; } QPushButton:hover { background-color: #1d4ed8; } QPushButton:disabled { background-color: #4b5563; }")
         self.convert_btn.clicked.connect(self._convert)
         progress_layout.addWidget(self.convert_btn)
+        
+        self.cancel_btn = QPushButton("⏹ Стоп")
+        self.cancel_btn.setMinimumHeight(40)
+        self.cancel_btn.setStyleSheet("QPushButton { background-color: #dc2626; color: white; font-size: 13px; font-weight: bold; border-radius: 4px; padding: 10px; } QPushButton:hover { background-color: #b91c1c; } QPushButton:disabled { background-color: #4b5563; }")
+        self.cancel_btn.clicked.connect(self._cancel_conversion)
+        self.cancel_btn.setEnabled(False)
+        progress_layout.addWidget(self.cancel_btn)
         
         self.progress_bar = QProgressBar()
         self.progress_bar.setMinimumHeight(35)
@@ -777,13 +809,50 @@ class MainWindow(QMainWindow):
             
             for f in Path(folder).iterdir():
                 if f.is_file() and f.suffix.lower() in exts:
-                    self.files_list.append(str(f))
+                    # Создаём строку с чекбоксом
+                    row = QFrame()
+                    row.setStyleSheet("background: #1f2937; border-radius: 3px;")
+                    row_layout = QHBoxLayout(row)
+                    row_layout.setContentsMargins(10, 5, 10, 5)
+                    row_layout.setSpacing(10)
                     
-                    row = QLabel(f"{f.name}  —  {f.stat().st_size // 1024} KB")
-                    row.setStyleSheet("padding: 4px; background: #1f2937; border-radius: 3px;")
+                    checkbox = QCheckBox()
+                    checkbox.setChecked(True)  # Выбран по умолчанию
+                    checkbox.stateChanged.connect(self._update_files_count)
+                    row_layout.addWidget(checkbox)
+                    
+                    label = QLabel(f"{f.name}  —  {f.stat().st_size // 1024} KB")
+                    label.setStyleSheet("padding: 4px;")
+                    row_layout.addWidget(label, 1)  # Растягивается
+                    
+                    row_layout.addStretch()
+                    
                     self.files_layout.insertWidget(self.files_layout.count() - 1, row)
+                    
+                    # Сохраняем путь и чекбокс
+                    self.files_list.append({"path": str(f), "checkbox": checkbox, "widget": row})
             
-            self.files_count.setText(f"Файлов: {len(self.files_list)}")
+            self._update_files_count()
+    
+    def _update_files_count(self):
+        """Обновить счётчик файлов"""
+        selected = sum(1 for f in self.files_list if f["checkbox"].isChecked())
+        total = len(self.files_list)
+        self.files_count.setText(f"Файлов: {selected}/{total}")
+    
+    def _select_all_files(self):
+        """Выбрать все файлы"""
+        for f in self.files_list:
+            f["checkbox"].setChecked(True)
+    
+    def _deselect_all_files(self):
+        """Снять выделение со всех файлов"""
+        for f in self.files_list:
+            f["checkbox"].setChecked(False)
+    
+    def _get_selected_files(self):
+        """Получить список выбранных файлов"""
+        return [f["path"] for f in self.files_list if f["checkbox"].isChecked()]
     
     def _preset_changed(self, name):
         p = self.preset_manager.get_preset_by_name(name)
@@ -796,36 +865,52 @@ class MainWindow(QMainWindow):
             self.convert_status.setText("✗ FFmpeg не найден")
             self.convert_status.setStyleSheet("color: #ef4444;")
             return
-        if not self.files_list:
-            self.convert_status.setText("⚠️ Нет файлов")
+        
+        # Получаем выбранные файлы
+        selected_files = self._get_selected_files()
+        
+        if not selected_files:
+            self.convert_status.setText("⚠️ Выберите файлы")
             self.convert_status.setStyleSheet("color: #f59e0b;")
             return
+        
         if not self.selected_preset:
             self.convert_status.setText("⚠️ Нет пресета")
             self.convert_status.setStyleSheet("color: #f59e0b;")
             return
         
         self.convert_btn.setEnabled(False)
+        self.cancel_btn.setEnabled(True)
         self.progress_bar.setValue(0)
+        self.progress_bar.setMaximum(len(selected_files))
         self.convert_status.setText("Конвертация...")
         self.convert_status.setStyleSheet("color: #f59e0b;")
         
         out = Path(self.selected_folder) / "output"
         out.mkdir(exist_ok=True)
         
-        self.worker = WorkerThread(self.files_list, out, self.selected_preset, self.ffmpeg)
+        self.worker = WorkerThread(selected_files, out, self.selected_preset, self.ffmpeg)
         self.worker.progress.connect(self._on_progress)
         self.worker.finished.connect(self._on_done)
         self.worker.log.connect(self._log)
         self.worker.start()
     
+    def _cancel_conversion(self):
+        """Отмена конвертации"""
+        if self.worker and self.worker.isRunning():
+            self.worker.cancel()
+            self.convert_status.setText("⚠️ Отмена...")
+            self.convert_status.setStyleSheet("color: #f59e0b;")
+    
     def _on_progress(self, current, name):
-        total = len(self.files_list)
-        self.progress_bar.setValue(int(current / total * 100))
+        """Обновление прогресса"""
+        self.progress_bar.setValue(current)
         self.progress_label.setText(name)
     
     def _on_done(self, ok, err):
+        """Завершение конвертации"""
         self.convert_btn.setEnabled(True)
+        self.cancel_btn.setEnabled(False)
         total = ok + err
         if err == 0:
             self.convert_status.setText(f"✓ Готово: {ok}/{total}")
