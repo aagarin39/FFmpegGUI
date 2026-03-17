@@ -109,26 +109,18 @@ class FFmpegWrapper:
         cmd = [self.ffmpeg_path, "-y", "-i", input_file] + preset_args + [output_file]
         
         try:
-            # Используем Popen для возможности отмены
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            # Запускаем процесс
+            process = subprocess.Popen(cmd)
             
-            # Проверяем флаг отмены во время конвертации
-            if cancel_flag is not None:
-                import time
-                while process.poll() is None:
-                    if cancel_flag[0]:
-                        process.terminate()
-                        try:
-                            process.wait(timeout=5)
-                        except subprocess.TimeoutExpired:
-                            process.kill()  # Надёжная остановка
-                        return False
-                    # Задержка 2 секунды - не мешает FFmpeg работать на полную
-                    time.sleep(2)
-                return process.returncode == 0
-            else:
-                process.wait()
-                return process.returncode == 0
+            # Ждём завершения процесса
+            process.wait()
+            
+            return process.returncode == 0
+        except KeyboardInterrupt:
+            # Обработка прерывания
+            process.kill()
+            process.wait()
+            return False
         except Exception:
             return False
     

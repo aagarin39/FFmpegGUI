@@ -57,18 +57,18 @@ class WorkerThread(QThread):
         self.output_folder = output_folder
         self.preset = preset
         self.ffmpeg = ffmpeg
-        self._cancel_flag = [False]  # Используем список для изменяемого флага
+        self._cancel_flag = False
     
     def cancel(self):
         """Отмена конвертации"""
-        self._cancel_flag[0] = True
+        self._cancel_flag = True
     
     def run(self):
         ok = 0
         err = 0
         
         for i, file in enumerate(self.files):
-            if self._cancel_flag[0]:
+            if self._cancel_flag:
                 self.log.emit("⚠️ Конвертация отменена пользователем")
                 break
             
@@ -79,11 +79,11 @@ class WorkerThread(QThread):
             output = str(self.output_folder / f"{Path(file).stem}.{ext}")
             
             try:
-                if self.ffmpeg.convert(file, output, self.preset, self._cancel_flag):
+                if self.ffmpeg.convert(file, output, self.preset):
                     ok += 1
                     self.log.emit(f"✓ {name}")
                 else:
-                    if self._cancel_flag[0]:
+                    if self._cancel_flag:
                         break
                     err += 1
                     self.log.emit(f"✗ {name}")
