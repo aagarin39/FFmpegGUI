@@ -624,31 +624,39 @@ class MainWindow(QMainWindow):
         
         # Пресеты
         preset_frame = QGroupBox("Настройки конвертации")
-        preset_layout = QHBoxLayout(preset_frame)
+        preset_layout = QVBoxLayout(preset_frame)
         
-        preset_layout.addWidget(QLabel("Пресет:"))
+        # Первая строка: комбобокс + кнопка
+        top_row = QHBoxLayout()
+        top_row.addWidget(QLabel("Пресет:"), 0, Qt.AlignmentFlag.AlignRight)
         
         self.preset_combo = QComboBox()
         self.preset_combo.setMinimumWidth(300)
         self.preset_combo.setObjectName("preset_combo")
         presets = [p.name for p in self.preset_manager.get_all_presets()]
         self.preset_combo.addItems(presets)
+        top_row.addWidget(self.preset_combo, 0, Qt.AlignmentFlag.AlignLeft)
+        
+        builder_btn = QPushButton("🛠 Конструктор")
+        builder_btn.clicked.connect(self._open_preset_builder)
+        top_row.addWidget(builder_btn)
+        top_row.addStretch()
+        
+        preset_layout.addLayout(top_row)
+        
+        # Вторая строка: описание пресета
+        self.preset_info = QLabel("")
+        self.preset_info.setStyleSheet("color: #6b7280; font-style: italic; font-size: 11px;")
+        self.preset_info.setWordWrap(True)
+        preset_layout.addWidget(self.preset_info)
+        
+        # Подключаем сигнал ПОСЛЕ создания всех виджетов
         self.preset_combo.currentTextChanged.connect(self._preset_changed)
-        preset_layout.addWidget(self.preset_combo)
         
         # Автоматически выбираем первый пресет
         if presets:
             self.preset_combo.setCurrentIndex(0)
             self._preset_changed(presets[0])
-        
-        builder_btn = QPushButton("🛠 Конструктор")
-        builder_btn.clicked.connect(self._open_preset_builder)
-        preset_layout.addWidget(builder_btn)
-        
-        self.preset_info = QLabel("")
-        self.preset_info.setStyleSheet("color: #6b7280; font-style: italic;")
-        preset_layout.addWidget(self.preset_info)
-        preset_layout.addStretch()
         
         layout.addWidget(preset_frame)
         
