@@ -57,11 +57,17 @@ class WorkerThread(QThread):
         self.output_folder = output_folder
         self.preset = preset
         self.ffmpeg = ffmpeg
+        self.process = None  # Ссылка на subprocess.Popen
         self._cancel_flag = False
     
-    def cancel(self):
-        """Отмена конвертации"""
+    def kill(self):
+        """Мгновенное завершение ffmpeg.exe"""
         self._cancel_flag = True
+        try:
+            if self.process and self.process.poll() is None:
+                self.process.kill()
+        except (ProcessLookupError, OSError):
+            pass  # Процесс уже завершился
     
     def run(self):
         ok = 0
@@ -79,7 +85,7 @@ class WorkerThread(QThread):
             output = str(self.output_folder / f"{Path(file).stem}.{ext}")
             
             try:
-                if self.ffmpeg.convert(file, output, self.preset):
+                if self.ffmpeg.convert(file, output, self.preset, self):
                     ok += 1
                     self.log.emit(f"✓ {name}")
                 else:
@@ -922,7 +928,7 @@ class MainWindow(QMainWindow):
     def _cancel_conversion(self):
         """Отмена конвертации"""
         if self.worker and self.worker.isRunning():
-            self.worker.cancel()
+            self.worker.kill()  # Мгновенное завершение ffmpeg.exe
             self.convert_status.setText("⚠️ Отмена...")
             self.convert_status.setStyleSheet("color: #f59e0b;")
     

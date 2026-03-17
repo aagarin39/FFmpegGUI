@@ -95,11 +95,11 @@ class FFmpegWrapper:
         )
 
     def convert(self, input_file: str, output_file: str, 
-            preset: Preset | None = None, cancel_flag: list | None = None) -> bool:
+            preset: Preset | None = None, worker_thread=None) -> bool:
         """Конвертация с использованием Preset объекта
         
         Args:
-            cancel_flag: список с одним элементом [bool] для проверки отмены
+            worker_thread: ссылка на WorkerThread для доступа к process
         """
         if preset:
             preset_args = self._generate_preset_args(preset)
@@ -107,19 +107,25 @@ class FFmpegWrapper:
             return False
         
         cmd = [self.ffmpeg_path, "-y", "-i", input_file] + preset_args + [output_file]
+        process = None
         
         try:
-            # Запускаем процесс
+            # Запускаем процесс и сохраняем ссылку в worker_thread
             process = subprocess.Popen(cmd)
             
-            # Ждём завершения процесса
-            process.wait()
+            if worker_thread:
+                worker_thread.process = process  # Сохраняем ссылку для kill()
             
+            process.wait()
             return process.returncode == 0
         except KeyboardInterrupt:
             # Обработка прерывания
-            process.kill()
-            process.wait()
+            try:
+                if process:
+                    process.kill()
+                    process.wait()
+            except (ProcessLookupError, OSError):
+                pass
             return False
         except Exception:
             return False
