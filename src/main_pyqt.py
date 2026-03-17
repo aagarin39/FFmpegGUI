@@ -630,10 +630,16 @@ class MainWindow(QMainWindow):
         
         self.preset_combo = QComboBox()
         self.preset_combo.setMinimumWidth(300)
+        self.preset_combo.setObjectName("preset_combo")
         presets = [p.name for p in self.preset_manager.get_all_presets()]
         self.preset_combo.addItems(presets)
         self.preset_combo.currentTextChanged.connect(self._preset_changed)
         preset_layout.addWidget(self.preset_combo)
+        
+        # Автоматически выбираем первый пресет
+        if presets:
+            self.preset_combo.setCurrentIndex(0)
+            self._preset_changed(presets[0])
         
         builder_btn = QPushButton("🛠 Конструктор")
         builder_btn.clicked.connect(self._open_preset_builder)
