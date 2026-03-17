@@ -792,7 +792,15 @@ class MainWindow(QMainWindow):
             self._log(f"✓ FFmpeg установлен: {FFmpegInstaller.get_ffmpeg_version()}")
     
     def _select_folder(self):
-        folder = QFileDialog.getExistingDirectory(self, "Папка с файлами")
+        # По умолчанию открываем папку пользователя
+        default_dir = str(Path.home())
+        
+        folder = QFileDialog.getExistingDirectory(
+            self,
+            "Папка с файлами",
+            default_dir,
+            QFileDialog.Option.ShowDirsOnly
+        )
         if folder:
             self.selected_folder = folder
             self.folder_label.setText(folder)
