@@ -114,15 +114,22 @@ class FFmpegWrapper:
             
             # Проверяем флаг отмены во время конвертации
             if cancel_flag is not None:
+                import time
                 while process.poll() is None:
                     if cancel_flag[0]:
                         process.terminate()
-                        process.wait(timeout=5)
+                        try:
+                            process.wait(timeout=5)
+                        except subprocess.TimeoutExpired:
+                            process.kill()
+                            process.wait()
                         return False
+                    # Небольшая задержка чтобы не мешать FFmpeg
+                    time.sleep(0.5)
+                return process.returncode == 0
             else:
                 process.wait()
-            
-            return process.returncode == 0
+                return process.returncode == 0
         except Exception:
             return False
     
