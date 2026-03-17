@@ -121,11 +121,10 @@ class FFmpegWrapper:
                         try:
                             process.wait(timeout=5)
                         except subprocess.TimeoutExpired:
-                            process.kill()
-                            process.wait()
+                            process.kill()  # Надёжная остановка
                         return False
-                    # Небольшая задержка чтобы не мешать FFmpeg
-                    time.sleep(0.5)
+                    # Задержка 2 секунды - не мешает FFmpeg работать на полную
+                    time.sleep(2)
                 return process.returncode == 0
             else:
                 process.wait()
