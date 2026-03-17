@@ -95,8 +95,12 @@ class FFmpegWrapper:
         )
 
     def convert(self, input_file: str, output_file: str, 
-            preset: Preset | None = None) -> bool:
-        """Конвертация с использованием Preset объекта"""
+            preset: Preset | None = None, cancel_flag: list | None = None) -> bool:
+        """Конвертация с использованием Preset объекта
+        
+        Args:
+            cancel_flag: список с одним элементом [bool] для проверки отмены
+        """
         if preset:
             preset_args = self._generate_preset_args(preset)
         else:
@@ -105,7 +109,19 @@ class FFmpegWrapper:
         cmd = [self.ffmpeg_path, "-y", "-i", input_file] + preset_args + [output_file]
         
         try:
-            process = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            # Используем Popen для возможности отмены
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            
+            # Проверяем флаг отмены во время конвертации
+            if cancel_flag is not None:
+                while process.poll() is None:
+                    if cancel_flag[0]:
+                        process.terminate()
+                        process.wait(timeout=5)
+                        return False
+            else:
+                process.wait()
+            
             return process.returncode == 0
         except Exception:
             return False
