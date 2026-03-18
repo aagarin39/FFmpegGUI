@@ -38,14 +38,14 @@ else:
         from .core.ffmpeg_installer import FFmpegInstaller
         from .core.ffmpeg_updater import FFmpegUpdater
         from .core.presets import PresetManager, Preset
-        from .platform import PlatformManager
+        from .platforms import PlatformManager
         from .core.config import get_config
     except ImportError:
         from core.ffmpeg import FFmpegWrapper
         from core.ffmpeg_installer import FFmpegInstaller
         from core.ffmpeg_updater import FFmpegUpdater
         from core.presets import PresetManager, Preset
-        from platform import PlatformManager
+        from platforms import PlatformManager
         from core.config import get_config
 
 

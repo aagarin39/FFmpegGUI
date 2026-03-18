@@ -10,9 +10,9 @@ from dataclasses import dataclass, field
 
 # Импорт платформы (абсолютный импорт)
 try:
-    from src.platform import PlatformManager
+    from src.platforms import PlatformManager
 except ImportError:
-    from platform import PlatformManager
+    from platforms import PlatformManager
 
 
 @dataclass
