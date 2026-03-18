@@ -17,7 +17,7 @@ class WindowsPlatform(Platform):
         return "windows"
     
     def get_ffmpeg_install_path(self) -> Path:
-        """
+        r"""
         Получить путь для установки FFmpeg на Windows.
         
         Returns:
@@ -73,7 +73,7 @@ class WindowsPlatform(Platform):
             return False
     
     def get_config_dir(self) -> Path:
-        """
+        r"""
         Получить директорию для конфигурации на Windows.
         
         Returns:

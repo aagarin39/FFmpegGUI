@@ -8,7 +8,11 @@ from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass, field
 
-from .platform import PlatformManager
+# Импорт платформы (абсолютный импорт)
+try:
+    from src.platform import PlatformManager
+except ImportError:
+    from platform import PlatformManager
 
 
 @dataclass

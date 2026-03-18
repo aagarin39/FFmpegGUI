@@ -26,6 +26,8 @@ if getattr(sys, 'frozen', False):
     import src.core.ffmpeg_installer
     import src.core.ffmpeg_updater
     import src.core.presets
+    from src.platform import PlatformManager
+    from src.core.config import get_config
     
     FFmpegWrapper = src.core.ffmpeg.FFmpegWrapper
     PresetManager = src.core.presets.PresetManager
@@ -38,11 +40,15 @@ else:
         from .core.ffmpeg_installer import FFmpegInstaller
         from .core.ffmpeg_updater import FFmpegUpdater
         from .core.presets import PresetManager, Preset
+        from .platform import PlatformManager
+        from .core.config import get_config
     except ImportError:
         from core.ffmpeg import FFmpegWrapper
         from core.ffmpeg_installer import FFmpegInstaller
         from core.ffmpeg_updater import FFmpegUpdater
         from core.presets import PresetManager, Preset
+        from platform import PlatformManager
+        from core.config import get_config
 
 
 class WorkerThread(QThread):
@@ -750,9 +756,17 @@ class MainWindow(QMainWindow):
         self.status_bar.addWidget(self.convert_status)
     
     def _check_ffmpeg(self):
+        """Проверка наличия FFmpeg с использованием PlatformManager."""
+        # Получаем платформу
+        platform = PlatformManager.get_platform()
+        
+        # Проверяем в PATH
         self.ffmpeg_available = shutil.which("ffmpeg") is not None
-        install_dir = Path.home() / "FFmpegGUI" / "ffmpeg"
-        if (install_dir / "ffmpeg.exe").exists():
+        
+        # Проверяем в директории установки
+        install_dir = platform.get_ffmpeg_install_path()
+        ffmpeg_exe = install_dir / ("ffmpeg.exe" if sys.platform == "win32" else "ffmpeg")
+        if ffmpeg_exe.exists():
             self.ffmpeg_available = True
         
         if self.ffmpeg_available:
@@ -783,10 +797,13 @@ class MainWindow(QMainWindow):
         if not self.ffmpeg_available:
             return
         
+        platform = PlatformManager.get_platform()
+        install_dir = platform.get_ffmpeg_install_path()
+        
         menu = QMenu(self)
         menu.addAction(f"✓ FFmpeg {self.ffmpeg_version}")
         menu.addSeparator()
-        menu.addAction("📁 Открыть папку", lambda: subprocess.run(["explorer", str(FFmpegInstaller.INSTALL_DIR)]))
+        menu.addAction("📁 Открыть папку", lambda: platform.open_file_explorer(install_dir))
         menu.addAction("🗑️ Удалить", self._uninstall_ffmpeg)
         
         menu.exec(self.status_label.mapToGlobal(event.pos()))
