@@ -5,10 +5,10 @@ import pytest
 import sys
 from pathlib import Path
 
-from src.platform import PlatformManager, Platform
-from src.platform.windows import WindowsPlatform
-from src.platform.linux import LinuxPlatform
-from src.platform.macos import MacOSPlatform
+from src.platforms import PlatformManager, Platform
+from src.platforms.windows import WindowsPlatform
+from src.platforms.linux import LinuxPlatform
+from src.platforms.macos import MacOSPlatform
 
 
 class TestPlatformManager:
