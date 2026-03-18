@@ -3,9 +3,7 @@ FFmpeg Converter - PyQt6 версия
 Стабильный интерфейс без дерганий на многомониторных системах
 """
 import sys
-import os
 import shutil
-import subprocess
 import threading
 import datetime
 from pathlib import Path
