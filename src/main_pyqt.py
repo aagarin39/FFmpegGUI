@@ -85,8 +85,14 @@ class WorkerThread(QThread):
             name = Path(file).name
             self.log.emit(f"▶ {name}")
             
+            # Формируем краткое имя пресета: codec_accelerator
+            codec = self.preset.codec_type  # h264, hevc
+            accelerator = self.preset.hw_accelerator or "cpu"  # nvenc, qsv, amf, cpu
+            preset_suffix = f"{codec}_{accelerator}"
+            
             ext = self.preset.container if self.preset.container else "mkv"
-            output = str(self.output_folder / f"{Path(file).stem}.{ext}")
+            stem = Path(file).stem
+            output = str(self.output_folder / f"{stem}.{preset_suffix}.{ext}")
             
             try:
                 if self.ffmpeg.convert(file, output, self.preset, self):
