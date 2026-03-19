@@ -625,6 +625,11 @@ class MainWindow(QMainWindow):
         select_btn.clicked.connect(self._select_folder)
         folder_layout.addWidget(select_btn)
         
+        refresh_btn = QPushButton("🔄 Обновить")
+        refresh_btn.clicked.connect(self._refresh_files)
+        refresh_btn.setMaximumWidth(150)
+        folder_layout.addWidget(refresh_btn)
+        
         self.folder_label = QLabel("Папка не выбрана")
         self.folder_label.setStyleSheet("color: #6b7280;")
         folder_layout.addWidget(self.folder_label)
@@ -884,6 +889,52 @@ class MainWindow(QMainWindow):
         selected = sum(1 for f in self.files_list if f["checkbox"].isChecked())
         total = len(self.files_list)
         self.files_count.setText(f"Файлов: {selected}/{total}")
+    
+    def _refresh_files(self):
+        """Обновить список файлов в текущей папке"""
+        if not self.selected_folder:
+            self.status_bar.showMessage("⚠️ Сначала выберите папку", 3000)
+            return
+        
+        # Очищаем текущий список
+        while self.files_layout.count() > 1:
+            item = self.files_layout.takeAt(0)
+            if item and item.widget():
+                item.widget().deleteLater()
+        
+        self.files_list = []
+        
+        # Загружаем файлы заново
+        exts = {".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".m4v",
+                ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
+        
+        for f in Path(self.selected_folder).iterdir():
+            if f.is_file() and f.suffix.lower() in exts:
+                # Создаём строку с чекбоксом
+                row = QFrame()
+                row.setStyleSheet("background: #1f2937; border-radius: 3px;")
+                row_layout = QHBoxLayout(row)
+                row_layout.setContentsMargins(10, 5, 10, 5)
+                row_layout.setSpacing(10)
+                
+                checkbox = QCheckBox()
+                checkbox.setChecked(True)  # Выбран по умолчанию
+                checkbox.stateChanged.connect(self._update_files_count)
+                row_layout.addWidget(checkbox)
+                
+                label = QLabel(f"{f.name}  —  {f.stat().st_size // 1024} KB")
+                label.setStyleSheet("padding: 4px;")
+                row_layout.addWidget(label, 1)  # Растягивается
+                
+                row_layout.addStretch()
+                
+                self.files_layout.insertWidget(self.files_layout.count() - 1, row)
+                
+                # Сохраняем путь и чекбокс
+                self.files_list.append({"path": str(f), "checkbox": checkbox, "widget": row})
+        
+        self._update_files_count()
+        self.status_bar.showMessage("✓ Список файлов обновлён", 3000)
     
     def _select_all_files(self):
         """Выбрать все файлы"""
