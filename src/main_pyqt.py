@@ -871,7 +871,7 @@ class MainWindow(QMainWindow):
                     checkbox.stateChanged.connect(self._update_files_count)
                     row_layout.addWidget(checkbox)
                     
-                    label = QLabel(f"{f.name}  —  {f.stat().st_size // 1024} KB")
+                    label = QLabel(f"{f.name}  —  {f.stat().st_size / (1024**3):.2f} GB")
                     label.setStyleSheet("padding: 4px;")
                     row_layout.addWidget(label, 1)  # Растягивается
                     
@@ -922,7 +922,7 @@ class MainWindow(QMainWindow):
                 checkbox.stateChanged.connect(self._update_files_count)
                 row_layout.addWidget(checkbox)
                 
-                label = QLabel(f"{f.name}  —  {f.stat().st_size // 1024} KB")
+                label = QLabel(f"{f.name}  —  {f.stat().st_size / (1024**3):.2f} GB")
                 label.setStyleSheet("padding: 4px;")
                 row_layout.addWidget(label, 1)  # Растягивается
                 
