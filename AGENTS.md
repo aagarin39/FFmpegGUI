@@ -25,6 +25,11 @@ pip install pyinstaller>=6.0.0
 python build.py                  # Результат: dist/FFmpegConverter.exe
 ```
 
+**Важно:** Пользователь получает **ОДИН файл** — `FFmpegConverter.exe`
+- `FFmpegConverter.exe` — основная программа (конвертация + очистка FFmpeg)
+- `FFmpegConverter_Uninstall.exe` — деинсталлятор (для Панели управления)
+- Все функции в одном файле (очистка FFmpeg через `--cleanup-ffmpeg`)
+
 ### Линтинг и форматирование
 ```bash
 ruff check src/                  # Проверка кода

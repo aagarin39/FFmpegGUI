@@ -1006,25 +1006,22 @@ class MainWindow(QMainWindow):
             shortcut_name = "Удалить FFmpeg.lnk"
             shortcut_path = desktop / shortcut_name
             
-            # Путь к Cleanup_FFmpeg.exe
+            # Ярлык на FFmpegConverter.exe с флагом --cleanup-ffmpeg
             if getattr(sys, 'frozen', False):
-                # Запущен как .exe - ярлык на Cleanup_FFmpeg.exe в той же папке
-                cleanup_exe = Path(sys.executable).parent / "Cleanup_FFmpeg.exe"
+                # Запущен как .exe
+                main_exe = Path(sys.executable)
             else:
-                # Запущен как .py - используем cleanup_ffmpeg.py
-                cleanup_exe = Path(__file__).parent / "cleanup_ffmpeg.py"
-            
-            if not cleanup_exe.exists():
-                print(f"Cleanup не найден: {cleanup_exe}")
-                return
+                # Запущен как .py
+                main_exe = Path(sys.executable)
             
             # Создаём ярлык через WScript
             import subprocess
             vbs_script = f'''
 Set WshShell = CreateObject("WScript.Shell")
 Set oLink = WshShell.CreateShortcut("{shortcut_path}")
-oLink.TargetPath = "{cleanup_exe}"
-oLink.WorkingDirectory = "{cleanup_exe.parent}"
+oLink.TargetPath = "{main_exe}"
+oLink.Arguments = "--cleanup-ffmpeg"
+oLink.WorkingDirectory = "{main_exe.parent}"
 oLink.Description = "Удалить FFmpeg и все данные программы"
 oLink.IconLocation = "shell32.dll,161"
 oLink.Save
@@ -1270,6 +1267,7 @@ oLink.Save
 
 
 def main():
+    """Точка входа приложения"""
     # Настройка DPI
     if sys.platform == "win32":
         try:
@@ -1277,6 +1275,13 @@ def main():
             ctypes.windll.shcore.SetProcessDpiAwareness(2)
         except:
             pass
+    
+    # Проверка флага --cleanup-ffmpeg
+    if "--cleanup-ffmpeg" in sys.argv:
+        # Запуск режима очистки FFmpeg
+        from cleanup_ffmpeg import main as cleanup_main
+        cleanup_main()
+        return
     
     app = QApplication(sys.argv)
     app.setStyle("Fusion")

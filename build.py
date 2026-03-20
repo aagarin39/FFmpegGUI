@@ -89,7 +89,7 @@ exe = EXE(
     onefile=True,
 )
 
-# Деинсталлятор программы
+# Деинсталлятор программы (отдельный EXE для Panel Control)
 uninstall_analysis = Analysis(
     ['src/uninstall.py'],
     pathex=[],
@@ -111,44 +111,6 @@ uninstall_exe = EXE(
     uninstall_analysis.datas,
     [],
     name='FFmpegConverter_Uninstall',
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
-    console=False,
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    icon=None,
-    onefile=True,
-)
-
-# Утилита очистки FFmpeg
-cleanup_analysis = Analysis(
-    ['src/cleanup_ffmpeg.py'],
-    pathex=[],
-    binaries=[],
-    datas=[],
-    hiddenimports=['PyQt6', 'PyQt6.QtCore', 'PyQt6.QtWidgets', 'PyQt6.QtGui'],
-    hookspath=[],
-    hooksconfig={},
-    runtime_hooks=[],
-    excludes=[],
-    cipher=block_cipher,
-)
-
-cleanup_exe = EXE(
-    pyz,
-    cleanup_analysis.scripts,
-    cleanup_analysis.binaries,
-    cleanup_analysis.zipfiles,
-    cleanup_analysis.datas,
-    [],
-    name='Cleanup_FFmpeg',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
