@@ -130,6 +130,51 @@ worker.finished.connect(self.on_done)
 worker.start()
 ```
 
+### Потокобезопасность
+
+**Правила работы с потоками:**
+
+1. **Никогда не обновляй UI из рабочего потока** — используй `pyqtSignal` или `QTimer.singleShot()`
+
+2. **Сохраняй данные перед передачей в главный поток:**
+```python
+def _install_done(self, ok: bool, create_shortcut: bool = False):
+    # Сохраняем значения в атрибуты объекта ПЕРЕД планированием
+    self._install_result_ok = ok
+    self._install_result_create_shortcut = create_shortcut
+    
+    # Планируем вызов в главном потоке
+    QTimer.singleShot(0, self._finish_install_safe)
+```
+
+3. **Проверяй существование окна перед обновлением:**
+```python
+if self.isHidden() or not self.isVisible():
+    return
+```
+
+4. **Используй задержки для операций с файлами:**
+```python
+# Небольшая задержка чтобы FFmpeg успел записаться на диск
+import time
+time.sleep(0.5)
+```
+
+5. **Оборачивай в try-except с логированием:**
+```python
+try:
+    # операция
+except Exception as e:
+    print(f"ERROR in _handler: {e}")
+    import traceback
+    traceback.print_exc()
+```
+
+**Исправление гонок потоков:**
+- Проблема: окно закрывалось после установки FFmpeg из-за гонки потоков
+- Решение: `_install_done()` сохраняет параметры, `_finish_install_safe()` выполняет с проверками
+- Добавлена задержка 0.5с для завершения записи файлов FFmpeg
+
 ### Core логика
 - Бизнес-логика отдельно от UI
 - Синхронные операции для FFmpeg (в потоке)

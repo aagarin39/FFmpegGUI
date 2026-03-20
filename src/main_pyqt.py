@@ -932,59 +932,19 @@ class MainWindow(QMainWindow):
         if self.installer and self.installer.isRunning():
             return
         
-        # Спрашиваем про ярлык удаления
-        from PyQt6.QtWidgets import QCheckBox, QDialog, QDialogButtonBox
-        
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Установка FFmpeg")
-        dialog.setMinimumWidth(450)
-        dialog.setModal(True)
-        
-        layout = QVBoxLayout(dialog)
-        
-        # Описание
-        desc = QLabel(
-            "FFmpeg займёт ~500 MB в папке:\n"
-            f"{Path.home() / 'FFmpegGUI'}\n\n"
-            "Создать ярлык удаления на рабочем столе?\n\n"
-            "Этот ярлык позволит полностью удалить FFmpeg и все данные программы."
-        )
-        desc.setWordWrap(True)
-        layout.addWidget(desc)
-        
-        # Чекбокс
-        create_shortcut_cb = QCheckBox("Создать ярлык удаления на рабочем столе")
-        create_shortcut_cb.setChecked(True)  # По умолчанию да
-        layout.addWidget(create_shortcut_cb)
-        
-        # Кнопки
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Ok
-        )
-        buttons.button(QDialogButtonBox.StandardButton.Ok).setText("Установить")
-        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Отмена")
-        buttons.accepted.connect(dialog.accept)
-        buttons.rejected.connect(dialog.reject)
-        layout.addWidget(buttons)
-        
-        # Показываем диалог
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            return
-        
         # Скрываем баннер обновления
         self.update_banner.hide()
         
         # Запускаем установку
         self.installer = InstallerThread()
         self.installer.progress.connect(lambda p: self.status_bar.showMessage(f"Установка... {p}%", 2000))
-        self.installer.finished.connect(lambda ok: self._install_done(ok, create_shortcut_cb.isChecked()))
+        self.installer.finished.connect(self._install_done)
         self.installer.start()
     
-    def _install_done(self, ok: bool, create_shortcut: bool = False):
+    def _install_done(self, ok: bool):
         """Завершение установки FFmpeg — безопасно для потока"""
         # Сохраняем значения в атрибуты объекта ПЕРЕД планированием
         self._install_result_ok = ok
-        self._install_result_create_shortcut = create_shortcut
         
         # Проверяем что окно ещё существует и не скрыто
         if self.isHidden() or not self.isVisible():
@@ -997,9 +957,8 @@ class MainWindow(QMainWindow):
         """Безопасное завершение установки (вызывается в главном потоке)"""
         try:
             ok = getattr(self, '_install_result_ok', False)
-            create_shortcut = getattr(self, '_install_result_create_shortcut', False)
             
-            print(f"DEBUG: _finish_install_safe(ok={ok}, create_shortcut={create_shortcut})")
+            print(f"DEBUG: _finish_install_safe(ok={ok})")
             
             if not ok:
                 self._log("✗ Ошибка установки FFmpeg")
@@ -1015,9 +974,9 @@ class MainWindow(QMainWindow):
             version = FFmpegInstaller.get_ffmpeg_version()
             self._log(f"✓ FFmpeg установлен: {version}")
             
-            if create_shortcut:
-                print(f"DEBUG: Creating shortcut...")
-                self._create_cleanup_shortcut()
+            # Создаём деинсталлятор и ярлык
+            self._create_uninstaller()
+            self._create_uninstall_shortcut()
             
             # Очищаем ссылку на установщик
             self.installer = None
@@ -1028,7 +987,30 @@ class MainWindow(QMainWindow):
             traceback.print_exc()
             self._log(f"✗ Ошибка после установки: {e}")
     
-    def _create_cleanup_shortcut(self):
+    def _create_uninstaller(self):
+        """Создать деинсталлятор FFmpeg в папке FFmpegGUI"""
+        try:
+            uninstall_dir = Path.home() / "FFmpegGUI"
+            uninstall_exe = uninstall_dir / "Uninstall_FFmpeg.exe"
+            
+            # Копируем текущий exe как деинсталлятор
+            if getattr(sys, 'frozen', False):
+                # Запущен как .exe
+                import shutil
+                shutil.copy2(sys.executable, uninstall_exe)
+                print(f"DEBUG: Created uninstaller at {uninstall_exe}")
+            else:
+                # Запущен как .py - копируем исходник
+                import shutil
+                src = Path(__file__).parent / "uninstall_ffmpeg.py"
+                if src.exists():
+                    shutil.copy2(src, uninstall_dir / "uninstall_ffmpeg.py")
+                    print(f"DEBUG: Copied uninstall_ffmpeg.py")
+            
+        except Exception as e:
+            print(f"ERROR creating uninstaller: {e}")
+    
+    def _create_uninstall_shortcut(self):
         """Создать ярлык удаления FFmpeg на рабочем столе"""
         try:
             # Рабочий стол
@@ -1036,13 +1018,60 @@ class MainWindow(QMainWindow):
             shortcut_name = "Удалить FFmpeg.lnk"
             shortcut_path = desktop / shortcut_name
             
+            print(f"DEBUG: Creating shortcut at {shortcut_path}")
+            
+            # Ярлык на Uninstall_FFmpeg.exe
+            uninstall_exe = Path.home() / "FFmpegGUI" / "Uninstall_FFmpeg.exe"
+            
+            # Создаём ярлык через WScript
+            import subprocess
+            vbs_script = f'''
+Set WshShell = CreateObject("WScript.Shell")
+Set oLink = WshShell.CreateShortcut("{shortcut_path}")
+oLink.TargetPath = "{uninstall_exe}"
+oLink.WorkingDirectory = "{uninstall_exe.parent}"
+oLink.Description = "Удалить FFmpeg (580 MB)"
+oLink.IconLocation = "shell32.dll,161"
+oLink.Save
+'''
+            print(f"DEBUG: VBS script created")
+            vbs_path = Path(tempfile.gettempdir()) / "create_shortcut.vbs"
+            vbs_path.write_text(vbs_script)
+            
+            print(f"DEBUG: Running cscript")
+            result = subprocess.run(["cscript", "//nologo", str(vbs_path)], capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                print(f"DEBUG: Shortcut created successfully!")
+                self.status_bar.showMessage("✓ Ярлык удаления создан на рабочем столе", 5000)
+            else:
+                print(f"DEBUG: CScript error: {result.stderr}")
+            
+        except Exception as e:
+            print(f"ERROR creating shortcut: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    def _create_cleanup_shortcut(self):
+        """Создать ярлык удаления FFmpeg на рабочем столе"""
+        print(f"DEBUG: _create_cleanup_shortcut() called")
+        try:
+            # Рабочий стол
+            desktop = Path.home() / "Desktop"
+            shortcut_name = "Удалить FFmpeg.lnk"
+            shortcut_path = desktop / shortcut_name
+            
+            print(f"DEBUG: Desktop={desktop}, shortcut={shortcut_path}")
+            
             # Ярлык на FFmpegConverter.exe с флагом --cleanup-ffmpeg
             if getattr(sys, 'frozen', False):
                 # Запущен как .exe
                 main_exe = Path(sys.executable)
+                print(f"DEBUG: Frozen mode, exe={main_exe}")
             else:
                 # Запущен как .py
                 main_exe = Path(sys.executable)
+                print(f"DEBUG: Dev mode, exe={main_exe}")
             
             # Создаём ярлык через WScript
             import subprocess
@@ -1056,17 +1085,22 @@ oLink.Description = "Удалить FFmpeg и все данные програм
 oLink.IconLocation = "shell32.dll,161"
 oLink.Save
 '''
+            print(f"DEBUG: VBS script created")
             vbs_path = Path(tempfile.gettempdir()) / "create_shortcut.vbs"
             vbs_path.write_text(vbs_script)
+            
+            print(f"DEBUG: Running cscript {vbs_path}")
             result = subprocess.run(["cscript", "//nologo", str(vbs_path)], capture_output=True, text=True)
             
             if result.returncode == 0:
+                print(f"DEBUG: Shortcut created successfully!")
                 self.status_bar.showMessage("✓ Ярлык удаления создан на рабочем столе", 5000)
             else:
-                print(f"CScript error: {result.stderr}")
+                print(f"DEBUG: CScript error: {result.stderr}")
+                print(f"DEBUG: CScript stdout: {result.stdout}")
             
         except Exception as e:
-            print(f"Failed to create shortcut: {e}")
+            print(f"ERROR in _create_cleanup_shortcut: {e}")
             import traceback
             traceback.print_exc()
     
@@ -1306,11 +1340,11 @@ def main():
         except:
             pass
     
-    # Проверка флага --cleanup-ffmpeg
-    if "--cleanup-ffmpeg" in sys.argv:
-        # Запуск режима очистки FFmpeg
-        from cleanup_ffmpeg import main as cleanup_main
-        cleanup_main()
+    # Проверка флага --uninstall-ffmpeg
+    if "--uninstall-ffmpeg" in sys.argv:
+        # Запуск режима удаления FFmpeg
+        from uninstall_ffmpeg import main as uninstall_main
+        uninstall_main()
         return
     
     app = QApplication(sys.argv)
