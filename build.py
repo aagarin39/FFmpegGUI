@@ -323,33 +323,49 @@ app = APP(
 
 def create_readme_dist():
     """Создать README для дистрибутива."""
-    readme = """# FFmpeg Converter
+    readme = """================================================================================
+                         FFmpeg Converter v0.3.0
+================================================================================
 
-## Установка FFmpeg
+Установка и запуск
+------------------
 
-### Windows
-1. Скачайте FFmpeg с https://www.gyan.dev/ffmpeg/builds/
-2. Распакуйте ffmpeg.exe и ffprobe.exe в папку с приложением
+1. Установите FFmpeg (при первом запуске):
+   - Запустите FFmpegConverter.exe
+   - Нажмите кнопку "Установить FFmpeg"
+   - Создайте ярлык удаления (рекомендуется)
+   - Дождитесь завершения (~30-60 секунд)
 
-### Linux
-sudo apt install ffmpeg  # Debian/Ubuntu
-sudo dnf install ffmpeg  # Fedora
-sudo pacman -S ffmpeg    # Arch
+2. Использование:
+   - Выберите папку с видео/фото
+   - Выберите пресет
+   - Нажмите "Конвертировать"
 
-### macOS
-brew install ffmpeg
+Удаление FFmpeg (~500 MB)
+-------------------------
 
-## Запуск
+Ярлык на рабочем столе:
+   - "Удалить FFmpeg.lnk" → дважды кликните
 
-- Windows: Дважды кликните на FFmpegConverter.exe
-- Linux: ./FFmpegConverter
-- macOS: Откройте FFmpegConverter.app
+Или в программе:
+   - Клик на статус "FFmpeg X.X"
+   - "Удалить FFmpeg"
 
-## Лицензия
-MIT
+Файлы в дистрибутиве
+--------------------
+
+- FFmpegConverter.exe (43 MB) - Программа
+- FFmpegConverter_Uninstall.exe (40 MB) - Деинсталлятор
+- Cleanup_FFmpeg.exe (40 MB) - Удаление FFmpeg
+
+Данные: %USERPROFILE%/FFmpegGUI/
+
+Репозиторий: https://github.com/aagarin39/FFmpegGUI.git
+Лицензия: MIT
+================================================================================
 """
     
-    Path('dist/README.txt').write_text(readme)
+    Path('dist/README.txt').write_text(readme, encoding='utf-8')
 
 
 def main():
