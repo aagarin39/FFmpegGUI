@@ -152,8 +152,11 @@ class FFmpegWrapper:
             args.extend(["-quality", quality, "-qp_i", str(preset.cq), "-qp_p", str(preset.cq)])
             args.append("-g")
             args.append("250")
-        else:  # libx264 (CPU)
-            args.extend(["-c:v", "libx264", "-preset", "medium", "-crf", str(preset.cq)])
+        else:  # CPU (libx264 или libx265)
+            if preset.codec_type == "hevc":
+                args.extend(["-c:v", "libx265", "-preset", "medium", "-crf", str(preset.cq)])
+            else:  # h264
+                args.extend(["-c:v", "libx264", "-preset", "medium", "-crf", str(preset.cq)])
         
         # Масштабирование с форматом yuv420p для совместимости
         if preset.scale:

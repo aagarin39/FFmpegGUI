@@ -205,6 +205,42 @@ DEFAULT_PRESETS = [
         cq=30,
         scale="1920:-2",
     ),
+    # CPU (libx264/libx265) - H.264
+    Preset(
+        id="h264_cpu_standard",
+        name="H.264 CPU Стандарт",
+        description="libx264, высокое качество (CRF 18), медленно",
+        hw_accelerator=None,
+        codec_type="h264",
+        cq=18,
+    ),
+    Preset(
+        id="h264_cpu_light",
+        name="H.264 CPU Лёгкий",
+        description="libx264, 1920x, CRF 20, быстрее",
+        hw_accelerator=None,
+        codec_type="h264",
+        cq=20,
+        scale="1920:-2",
+    ),
+    # CPU (libx264/libx265) - H.265
+    Preset(
+        id="hevc_cpu_standard",
+        name="H.265 CPU Стандарт",
+        description="libx265, высокое качество (CRF 20), очень медленно",
+        hw_accelerator=None,
+        codec_type="hevc",
+        cq=20,
+    ),
+    Preset(
+        id="hevc_cpu_light",
+        name="H.265 CPU Лёгкий",
+        description="libx265, 1920x, CRF 22, быстрее",
+        hw_accelerator=None,
+        codec_type="hevc",
+        cq=22,
+        scale="1920:-2",
+    ),
 ]
 
 
