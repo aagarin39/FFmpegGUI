@@ -863,30 +863,41 @@ class MainWindow(QMainWindow):
             exts = {".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".m4v",
                     ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
             
+            video_exts = ['.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm', '.m4v']
+            image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+            
             for f in Path(folder).iterdir():
-                if f.is_file() and f.suffix.lower() in exts:
-                    # Создаём строку с чекбоксом
-                    row = QFrame()
-                    row.setStyleSheet("background: #1f2937; border-radius: 3px;")
-                    row_layout = QHBoxLayout(row)
-                    row_layout.setContentsMargins(10, 5, 10, 5)
-                    row_layout.setSpacing(10)
+                if f.is_file():
+                    suffix = f.suffix.lower()
+                    name_lower = f.name.lower()
                     
-                    checkbox = QCheckBox()
-                    checkbox.setChecked(True)  # Выбран по умолчанию
-                    checkbox.stateChanged.connect(self._update_files_count)
-                    row_layout.addWidget(checkbox)
+                    # Проверяем: точное расширение ИЛИ вхождение в имя
+                    is_video = suffix in exts or any(ext in name_lower for ext in video_exts)
+                    is_image = suffix in exts or any(ext in name_lower for ext in image_exts)
                     
-                    label = QLabel(f"{f.name}  —  {f.stat().st_size / (1024**3):.2f} GB")
-                    label.setStyleSheet("padding: 4px;")
-                    row_layout.addWidget(label, 1)  # Растягивается
-                    
-                    row_layout.addStretch()
-                    
-                    self.files_layout.insertWidget(self.files_layout.count() - 1, row)
-                    
-                    # Сохраняем путь и чекбокс
-                    self.files_list.append({"path": str(f), "checkbox": checkbox, "widget": row})
+                    if is_video or is_image:
+                        # Создаём строку с чекбоксом
+                        row = QFrame()
+                        row.setStyleSheet("background: #1f2937; border-radius: 3px;")
+                        row_layout = QHBoxLayout(row)
+                        row_layout.setContentsMargins(10, 5, 10, 5)
+                        row_layout.setSpacing(10)
+                        
+                        checkbox = QCheckBox()
+                        checkbox.setChecked(True)  # Выбран по умолчанию
+                        checkbox.stateChanged.connect(self._update_files_count)
+                        row_layout.addWidget(checkbox)
+                        
+                        label = QLabel(f"{f.name}  —  {f.stat().st_size / (1024**3):.2f} GB")
+                        label.setStyleSheet("padding: 4px;")
+                        row_layout.addWidget(label, 1)  # Растягивается
+                        
+                        row_layout.addStretch()
+                        
+                        self.files_layout.insertWidget(self.files_layout.count() - 1, row)
+                        
+                        # Сохраняем путь и чекбокс
+                        self.files_list.append({"path": str(f), "checkbox": checkbox, "widget": row})
             
             self._update_files_count()
     
@@ -914,30 +925,40 @@ class MainWindow(QMainWindow):
         exts = {".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".m4v",
                 ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
         
+        video_exts = ['.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm', '.m4v']
+        image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+        
         for f in Path(self.selected_folder).iterdir():
-            if f.is_file() and f.suffix.lower() in exts:
-                # Создаём строку с чекбоксом
-                row = QFrame()
-                row.setStyleSheet("background: #1f2937; border-radius: 3px;")
-                row_layout = QHBoxLayout(row)
-                row_layout.setContentsMargins(10, 5, 10, 5)
-                row_layout.setSpacing(10)
+            if f.is_file():
+                suffix = f.suffix.lower()
+                name_lower = f.name.lower()
                 
-                checkbox = QCheckBox()
-                checkbox.setChecked(True)  # Выбран по умолчанию
-                checkbox.stateChanged.connect(self._update_files_count)
-                row_layout.addWidget(checkbox)
+                is_video = suffix in exts or any(ext in name_lower for ext in video_exts)
+                is_image = suffix in exts or any(ext in name_lower for ext in image_exts)
                 
-                label = QLabel(f"{f.name}  —  {f.stat().st_size / (1024**3):.2f} GB")
-                label.setStyleSheet("padding: 4px;")
-                row_layout.addWidget(label, 1)  # Растягивается
-                
-                row_layout.addStretch()
-                
-                self.files_layout.insertWidget(self.files_layout.count() - 1, row)
-                
-                # Сохраняем путь и чекбокс
-                self.files_list.append({"path": str(f), "checkbox": checkbox, "widget": row})
+                if is_video or is_image:
+                    # Создаём строку с чекбоксом
+                    row = QFrame()
+                    row.setStyleSheet("background: #1f2937; border-radius: 3px;")
+                    row_layout = QHBoxLayout(row)
+                    row_layout.setContentsMargins(10, 5, 10, 5)
+                    row_layout.setSpacing(10)
+                    
+                    checkbox = QCheckBox()
+                    checkbox.setChecked(True)  # Выбран по умолчанию
+                    checkbox.stateChanged.connect(self._update_files_count)
+                    row_layout.addWidget(checkbox)
+                    
+                    label = QLabel(f"{f.name}  —  {f.stat().st_size / (1024**3):.2f} GB")
+                    label.setStyleSheet("padding: 4px;")
+                    row_layout.addWidget(label, 1)  # Растягивается
+                    
+                    row_layout.addStretch()
+                    
+                    self.files_layout.insertWidget(self.files_layout.count() - 1, row)
+                    
+                    # Сохраняем путь и чекбокс
+                    self.files_list.append({"path": str(f), "checkbox": checkbox, "widget": row})
         
         self._update_files_count()
         self.status_bar.showMessage("✓ Список файлов обновлён", 3000)
