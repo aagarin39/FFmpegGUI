@@ -94,10 +94,24 @@ class WorkerThread(QThread):
             stem = Path(file).stem
             output = str(self.output_folder / f"{stem}.{preset_suffix}.{ext}")
             
+            # Удаляем 0-байтный файл если существует (предыдущая неудачная конвертация)
+            output_path = Path(output)
+            if output_path.exists() and output_path.stat().st_size == 0:
+                try:
+                    output_path.unlink()
+                    self.log.emit(f"🗑️ Удалён пустой файл: {output_path.name}")
+                except Exception as e:
+                    self.log.emit(f"⚠️ Не удалось удалить пустой файл: {e}")
+            
             try:
                 if self.ffmpeg.convert(file, output, self.preset, self):
-                    ok += 1
-                    self.log.emit(f"✓ {name}")
+                    # Проверяем что файл не пустой
+                    if output_path.exists() and output_path.stat().st_size == 0:
+                        err += 1
+                        self.log.emit(f"✗ {name}: Файл пустой (кодек не доступен)")
+                    else:
+                        ok += 1
+                        self.log.emit(f"✓ {name}")
                 else:
                     if self._cancel_flag:
                         break
@@ -866,16 +880,24 @@ class MainWindow(QMainWindow):
             video_exts = ['.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm', '.m4v']
             image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
             
+            # Исключаем папку output из конвертации
+            output_folder_name = "output"
+            
             for f in Path(folder).iterdir():
-                if f.is_file():
-                    suffix = f.suffix.lower()
-                    name_lower = f.name.lower()
-                    
-                    # Проверяем: точное расширение ИЛИ вхождение в имя
-                    is_video = suffix in exts or any(ext in name_lower for ext in video_exts)
-                    is_image = suffix in exts or any(ext in name_lower for ext in image_exts)
-                    
-                    if is_video or is_image:
+                # Пропускаем папки и папку output
+                if not f.is_file():
+                    continue
+                if f.name == output_folder_name and f.parent == folder:
+                    continue
+                
+                suffix = f.suffix.lower()
+                name_lower = f.name.lower()
+                
+                # Проверяем: точное расширение ИЛИ вхождение в имя
+                is_video = suffix in exts or any(ext in name_lower for ext in video_exts)
+                is_image = suffix in exts or any(ext in name_lower for ext in image_exts)
+                
+                if is_video or is_image:
                         # Создаём строку с чекбоксом
                         row = QFrame()
                         row.setStyleSheet("background: #1f2937; border-radius: 3px;")
@@ -1030,17 +1052,15 @@ class MainWindow(QMainWindow):
         self.progress_bar.setValue(current)
         self.progress_label.setText(name)
     
-    def _on_done(self, ok, err):
+    def _on_done(self, success, ok, err):
         """Завершение конвертации"""
         self.convert_btn.setEnabled(True)
         self.cancel_btn.setEnabled(False)
         total = ok + err
         if err == 0:
-            self.convert_status.setText(f"✓ Готово: {ok}/{total}")
-            self.convert_status.setStyleSheet("color: #22c55e;")
+            self.status_bar.showMessage(f"✓ Готово: {ok}/{total}", 10000)
         else:
-            self.convert_status.setText(f"⚠️ {ok} успешно, {err} ошибок")
-            self.convert_status.setStyleSheet("color: #f59e0b;")
+            self.status_bar.showMessage(f"⚠️ {ok} успешно, {err} ошибок", 10000)
         self._log(f"=== {ok} успешно, {err} ошибок ===")
     
     def _log(self, msg):
