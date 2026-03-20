@@ -1057,11 +1057,18 @@ class MainWindow(QMainWindow):
         self.convert_btn.setEnabled(True)
         self.cancel_btn.setEnabled(False)
         total = ok + err
+        
         if err == 0:
-            self.status_bar.showMessage(f"✓ Готово: {ok}/{total}", 10000)
+            # Всё успешно
+            self.status_bar.showMessage(f"✓ Успешно: {ok} из {total}", 10000)
+        elif ok == 0:
+            # Все файлы с ошибкой
+            self.status_bar.showMessage(f"✗ Ошибка: 0 из {total}", 10000)
         else:
-            self.status_bar.showMessage(f"⚠️ {ok} успешно, {err} ошибок", 10000)
-        self._log(f"=== {ok} успешно, {err} ошибок ===")
+            # Частичный успех
+            self.status_bar.showMessage(f"⚠️ Успешно: {ok} из {total}, ошибок: {err}", 10000)
+        
+        self._log(f"=== Завершено: {ok} успешно, {err} ошибок ===")
     
     def _log(self, msg):
         t = datetime.datetime.now().strftime("%H:%M:%S")
