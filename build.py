@@ -34,22 +34,22 @@ def build_windows():
 block_cipher = None
 
 a = Analysis(
-    ['src/main_ctk.py'],
+    ['src/main_pyqt.py'],
     pathex=[],
     binaries=[],
-    datas=[
-        ('assets', 'assets'),
-    ],
+    datas=[],
     hiddenimports=[
-        'customtkinter',
-        'PIL',
-        'PIL.Image',
-        'darkdetect',
+        'PyQt6',
+        'PyQt6.QtCore',
+        'PyQt6.QtWidgets',
+        'PyQt6.QtGui',
         'pydantic',
         'pydantic_core',
         'src.core.ffmpeg',
         'src.core.presets',
         'src.core.ffmpeg_installer',
+        'src.core.ffmpeg_updater',
+        'src.platform',
         'urllib.request',
         'zipfile',
     ],
@@ -88,6 +88,44 @@ exe = EXE(
     icon=None,
     onefile=True,
 )
+
+# Деинсталлятор
+uninstall_analysis = Analysis(
+    ['src/uninstall.py'],
+    pathex=[],
+    binaries=[],
+    datas=[],
+    hiddenimports=['PyQt6', 'PyQt6.QtCore', 'PyQt6.QtWidgets', 'PyQt6.QtGui'],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[],
+    cipher=block_cipher,
+)
+
+uninstall_exe = EXE(
+    pyz,
+    uninstall_analysis.scripts,
+    uninstall_analysis.binaries,
+    uninstall_analysis.zipfiles,
+    uninstall_analysis.datas,
+    [],
+    name='FFmpegConverter_Uninstall',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon=None,
+    onefile=True,
+)
 """
     
     with open('ffmpeggui.spec', 'w', encoding='utf-8') as f:
@@ -96,7 +134,8 @@ exe = EXE(
     run_command([sys.executable, '-m', 'PyInstaller', 'ffmpeggui.spec', '--clean'])
     
     print("\n[OK] Windows сборка завершена!")
-    print(f"  EXE файл: dist/FFmpegConverter.exe")
+    print(f"  Программа: dist/FFmpegConverter.exe")
+    print(f"  Деинсталлятор: dist/FFmpegConverter_Uninstall.exe")
 
 
 def build_linux():

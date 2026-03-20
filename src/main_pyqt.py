@@ -839,7 +839,11 @@ class MainWindow(QMainWindow):
         menu.addAction(f"✓ FFmpeg {self.ffmpeg_version}")
         menu.addSeparator()
         menu.addAction("📁 Открыть папку", lambda: platform.open_file_explorer(install_dir))
-        menu.addAction("🗑️ Удалить", self._uninstall_ffmpeg)
+        menu.addAction("🗑️ Удалить FFmpeg", self._uninstall_ffmpeg)
+        
+        # Добавляем разделитель и пункт удаления программы
+        menu.addSeparator()
+        menu.addAction("❌ Удалить программу", self._uninstall_program)
         
         # Показываем меню в позиции клика
         menu.exec(self.ffmpeg_status_label.mapToGlobal(event.pos()))
@@ -852,6 +856,20 @@ class MainWindow(QMainWindow):
         else:
             self.convert_status_label.setText("✗ Ошибка удаления")
             self.convert_status_label.setStyleSheet("color: #ef4444;")
+    
+    def _uninstall_program(self):
+        """Запустить деинсталлятор программы"""
+        import subprocess
+        
+        # Путь к uninstall.py
+        uninstall_path = Path(__file__).parent / "uninstall.py"
+        
+        if uninstall_path.exists():
+            # Запускаем деинсталлятор
+            subprocess.run([sys.executable, str(uninstall_path)])
+        else:
+            self.convert_status_label.setText("⚠️ Деинсталлятор не найден")
+            self.convert_status_label.setStyleSheet("color: #f59e0b;")
     
     def _show_update_dialog(self):
         """Показать диалог обновления FFmpeg"""

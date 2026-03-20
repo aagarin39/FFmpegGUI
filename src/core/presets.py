@@ -251,8 +251,9 @@ class PresetManager:
         self._load_custom_presets()
 
     def _default_config_path(self) -> str:
-        config_dir = Path.home() / ".ffmpeggui"
-        config_dir.mkdir(exist_ok=True)
+        """Путь к конфигурации: ~/FFmpegGUI/app/presets.json"""
+        config_dir = Path.home() / "FFmpegGUI" / "app"
+        config_dir.mkdir(parents=True, exist_ok=True)
         return str(config_dir / "presets.json")
 
     def _load_custom_presets(self):

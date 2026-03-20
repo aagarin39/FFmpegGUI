@@ -57,7 +57,7 @@ class FFmpegInstaller:
     @classmethod
     def get_ffmpeg_version(cls) -> str:
         """Получить версию из файла version.txt"""
-        version_file = cls.INSTALL_DIR.parent / "version.txt"
+        version_file = cls.INSTALL_DIR / "version.txt"
         if version_file.exists():
             return version_file.read_text(encoding='utf-8').strip()
         return "неизвестно"
@@ -65,7 +65,7 @@ class FFmpegInstaller:
     @classmethod
     def get_install_date(cls) -> str:
         """Получить дату установки из файла"""
-        date_file = cls.INSTALL_DIR.parent / "install_date.txt"
+        date_file = cls.INSTALL_DIR / "install_date.txt"
         if date_file.exists():
             return date_file.read_text(encoding='utf-8').strip()
         return "неизвестно"
@@ -120,19 +120,7 @@ class FFmpegInstaller:
             # Удаляем ffmpeg папку
             shutil.rmtree(cls.INSTALL_DIR)
             
-            # Удаляем метаданные
-            for file in ["version.txt", "install_date.txt"]:
-                path = cls.INSTALL_DIR.parent / file
-                if path.exists():
-                    path.unlink()
-                    print(f"Removed {file}")
-            
-            # Пытаемся удалить пустую родительскую папку
-            parent = cls.INSTALL_DIR.parent
-            if parent.exists() and not any(parent.iterdir()):
-                parent.rmdir()
-                print(f"Removed empty parent directory: {parent}")
-            
+            # Возвращаем True (не удаляем app/, logs/ — это настройки приложения)
             return True
         except Exception as e:
             print(f"Uninstall error: {e}")
@@ -391,11 +379,11 @@ class FFmpegInstaller:
             latest_version = cls.FFMPEG_URL.split('/')[-1].replace('.zip', '')
             
             # Сохранение версии и даты
-            version_file = cls.INSTALL_DIR.parent / "version.txt"
+            version_file = cls.INSTALL_DIR / "version.txt"
             version_file.write_text(latest_version, encoding='utf-8')
             print(f"Saved version: {latest_version}")
             
-            date_file = cls.INSTALL_DIR.parent / "install_date.txt"
+            date_file = cls.INSTALL_DIR / "install_date.txt"
             install_date = __import__('datetime').datetime.now().strftime("%Y-%m-%d")
             date_file.write_text(install_date, encoding='utf-8')
             print(f"Saved install date: {install_date}")

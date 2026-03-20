@@ -11,8 +11,8 @@ from pathlib import Path
 class FFmpegUpdater:
     """Управление обновлениями FFmpeg"""
     
-    CACHE_FILE = Path.home() / "FFmpegGUI" / "update_cache.json"
-    SETTINGS_FILE = Path.home() / "FFmpegGUI" / "settings.json"
+    CACHE_FILE = Path.home() / "FFmpegGUI" / "app" / "update_cache.json"
+    SETTINGS_FILE = Path.home() / "FFmpegGUI" / "app" / "settings.json"
     CHECK_INTERVAL = 7 * 24 * 60 * 60  # 7 дней в секундах
     
     @classmethod
