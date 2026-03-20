@@ -982,6 +982,11 @@ class MainWindow(QMainWindow):
     
     def _install_done(self, ok: bool, create_shortcut: bool = False):
         """Завершение установки FFmpeg"""
+        # Обновляем UI в главном потоке
+        QTimer.singleShot(0, lambda: self._finish_install(ok, create_shortcut))
+    
+    def _finish_install(self, ok: bool, create_shortcut: bool = False):
+        """Завершить установку (вызывается в главном потоке)"""
         self._check_ffmpeg()
         if ok:
             version = FFmpegInstaller.get_ffmpeg_version()
