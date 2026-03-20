@@ -624,11 +624,13 @@ class MainWindow(QMainWindow):
         self.update_banner.hide()
         
         update_layout = QHBoxLayout(self.update_banner)
-        update_layout.addWidget(QLabel("🔄 Доступна новая версия FFmpeg"))
+        self.update_label = QLabel("🔄 Доступна новая версия FFmpeg")
+        self.update_label.setStyleSheet("color: white; font-weight: bold;")
+        update_layout.addWidget(self.update_label)
         
         update_btn = QPushButton("Обновить")
         update_btn.setStyleSheet("QPushButton { background-color: #15803d; color: white; padding: 8px 15px; border-radius: 4px; }")
-        update_btn.clicked.connect(self._install_ffmpeg)
+        update_btn.clicked.connect(self._show_update_dialog)
         update_layout.addWidget(update_btn)
         
         dismiss_btn = QPushButton("✕")
@@ -808,11 +810,17 @@ class MainWindow(QMainWindow):
             self.install_banner.show()
     
     def _check_updates(self):
+        """Проверить обновления и показать информацию"""
         try:
-            if FFmpegUpdater.should_notify():
+            update_info = FFmpegUpdater.get_update_info()
+            if update_info:
+                # Показываем версию в баннере
+                self.update_label.setText(
+                    f"🔄 Доступна версия {update_info['version']} (у вас {self.ffmpeg_version})"
+                )
                 self.update_banner.show()
-        except:
-            pass
+        except Exception as e:
+            print(f"Update check error: {e}")
     
     def _open_preset_builder(self):
         """Открыть конструктор пресетов"""
@@ -820,10 +828,7 @@ class MainWindow(QMainWindow):
         dlg.show()
     
     def _on_ffmpeg_status_click(self, event):
-        """Обработка клика на статус FFmpeg"""
-        self._ffmpeg_menu(None)
-    
-    def _ffmpeg_menu(self, event):
+        """Обработка клика на статус FFmpeg — показать меню"""
         if not self.ffmpeg_available:
             return
         
@@ -836,14 +841,77 @@ class MainWindow(QMainWindow):
         menu.addAction("📁 Открыть папку", lambda: platform.open_file_explorer(install_dir))
         menu.addAction("🗑️ Удалить", self._uninstall_ffmpeg)
         
+        # Показываем меню в позиции клика
         menu.exec(self.ffmpeg_status_label.mapToGlobal(event.pos()))
     
     def _uninstall_ffmpeg(self):
+        """Удалить FFmpeg"""
         if FFmpegInstaller.uninstall():
             self._log("✓ FFmpeg удалён")
             self._check_ffmpeg()
         else:
-            self.status_bar.showMessage("✗ Ошибка удаления", 3000)
+            self.convert_status_label.setText("✗ Ошибка удаления")
+            self.convert_status_label.setStyleSheet("color: #ef4444;")
+    
+    def _show_update_dialog(self):
+        """Показать диалог обновления FFmpeg"""
+        # Получаем информацию об обновлении
+        update_info = FFmpegUpdater.get_update_info()
+        
+        if not update_info:
+            self.convert_status_label.setText("⚠️ Не удалось проверить обновления")
+            self.convert_status_label.setStyleSheet("color: #f59e0b;")
+            return
+        
+        # Создаём диалог
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Обновление FFmpeg")
+        dlg.setMinimumWidth(450)
+        dlg.setModal(True)
+        
+        layout = QVBoxLayout(dlg)
+        layout.setSpacing(15)
+        
+        # Заголовок
+        title = QLabel("🔄 Доступна новая версия")
+        title.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
+        layout.addWidget(title)
+        
+        # Информация о версии
+        info = QLabel(
+            f"<b>Текущая версия:</b> {self.ffmpeg_version}<br>"
+            f"<b>Новая версия:</b> {update_info['version']}<br>"
+            f"<b>Дата выпуска:</b> {update_info['date'][:10]}"
+        )
+        info.setStyleSheet("font-size: 13px; padding: 10px; background: #1f2937; border-radius: 5px;")
+        layout.addWidget(info)
+        
+        # Описание
+        desc = QLabel(
+            "Обновление загрузит и установит новую версию FFmpeg.\n"
+            "Старая версия будет заменена.\n"
+            "Пользовательские пресеты сохранятся."
+        )
+        desc.setStyleSheet("color: #9ca3af; font-size: 12px;")
+        layout.addWidget(desc)
+        
+        # Кнопки
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        
+        cancel_btn = QPushButton("Отмена")
+        cancel_btn.setStyleSheet("QPushButton { background: transparent; border: 1px solid #4b5563; padding: 8px 20px; border-radius: 4px; }")
+        cancel_btn.clicked.connect(dlg.reject)
+        btn_layout.addWidget(cancel_btn)
+        
+        update_btn = QPushButton("Обновить")
+        update_btn.setStyleSheet("QPushButton { background-color: #15803d; color: white; padding: 8px 20px; border-radius: 4px; font-weight: bold; }")
+        update_btn.clicked.connect(lambda: [dlg.accept(), self._install_ffmpeg()])
+        btn_layout.addWidget(update_btn)
+        
+        layout.addLayout(btn_layout)
+        
+        dlg.exec()
     
     def _install_ffmpeg(self):
         if self.installer and self.installer.isRunning():
