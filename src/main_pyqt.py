@@ -1007,29 +1007,25 @@ class MainWindow(QMainWindow):
     
     def _convert(self):
         if not self.ffmpeg_available:
-            self.convert_status.setText("✗ FFmpeg не найден")
-            self.convert_status.setStyleSheet("color: #ef4444;")
+            self.status_bar.showMessage("✗ FFmpeg не найден", 3000)
             return
         
         # Получаем выбранные файлы
         selected_files = self._get_selected_files()
         
         if not selected_files:
-            self.convert_status.setText("⚠️ Выберите файлы")
-            self.convert_status.setStyleSheet("color: #f59e0b;")
+            self.status_bar.showMessage("⚠️ Выберите файлы", 3000)
             return
         
         if not self.selected_preset:
-            self.convert_status.setText("⚠️ Нет пресета")
-            self.convert_status.setStyleSheet("color: #f59e0b;")
+            self.status_bar.showMessage("⚠️ Нет пресета", 3000)
             return
         
         self.convert_btn.setEnabled(False)
         self.cancel_btn.setEnabled(True)
         self.progress_bar.setValue(0)
         self.progress_bar.setMaximum(len(selected_files))
-        self.convert_status.setText("Конвертация...")
-        self.convert_status.setStyleSheet("color: #f59e0b;")
+        self.status_bar.showMessage("Конвертация...", 3000)
         
         out = Path(self.selected_folder) / "output"
         out.mkdir(exist_ok=True)
@@ -1044,8 +1040,7 @@ class MainWindow(QMainWindow):
         """Отмена конвертации"""
         if self.worker and self.worker.isRunning():
             self.worker.kill()  # Мгновенное завершение ffmpeg.exe
-            self.convert_status.setText("⚠️ Отмена...")
-            self.convert_status.setStyleSheet("color: #f59e0b;")
+            self.status_bar.showMessage("⚠️ Отмена...", 3000)
     
     def _on_progress(self, current, name):
         """Обновление прогресса"""
