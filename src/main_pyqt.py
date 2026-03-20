@@ -981,22 +981,52 @@ class MainWindow(QMainWindow):
         self.installer.start()
     
     def _install_done(self, ok: bool, create_shortcut: bool = False):
-        """Завершение установки FFmpeg"""
-        # Обновляем UI в главном потоке
-        QTimer.singleShot(0, lambda: self._finish_install(ok, create_shortcut))
+        """Завершение установки FFmpeg — безопасно для потока"""
+        # Сохраняем значения в атрибуты объекта ПЕРЕД планированием
+        self._install_result_ok = ok
+        self._install_result_create_shortcut = create_shortcut
+        
+        # Проверяем что окно ещё существует и не скрыто
+        if self.isHidden() or not self.isVisible():
+            return
+        
+        # Планируем вызов в главном потоке
+        QTimer.singleShot(0, self._finish_install_safe)
     
-    def _finish_install(self, ok: bool, create_shortcut: bool = False):
-        """Завершить установку (вызывается в главном потоке)"""
-        print(f"DEBUG: _finish_install(ok={ok}, create_shortcut={create_shortcut})")
-        self._check_ffmpeg()
-        if ok:
+    def _finish_install_safe(self):
+        """Безопасное завершение установки (вызывается в главном потоке)"""
+        try:
+            ok = getattr(self, '_install_result_ok', False)
+            create_shortcut = getattr(self, '_install_result_create_shortcut', False)
+            
+            print(f"DEBUG: _finish_install_safe(ok={ok}, create_shortcut={create_shortcut})")
+            
+            if not ok:
+                self._log("✗ Ошибка установки FFmpeg")
+                self.convert_status_label.setText("✗ Ошибка установки FFmpeg")
+                self.convert_status_label.setStyleSheet("color: #ef4444;")
+                return
+            
+            # Небольшая задержка чтобы FFmpeg успел записаться на диск
+            import time
+            time.sleep(0.5)
+            
+            self._check_ffmpeg()
             version = FFmpegInstaller.get_ffmpeg_version()
             self._log(f"✓ FFmpeg установлен: {version}")
             
-            # Создаём ярлык если попросили
             if create_shortcut:
                 print(f"DEBUG: Creating shortcut...")
                 self._create_cleanup_shortcut()
+            
+            # Очищаем ссылку на установщик
+            self.installer = None
+            
+        except Exception as e:
+            print(f"ERROR in _finish_install_safe: {e}")
+            import traceback
+            traceback.print_exc()
+            self._log(f"✗ Ошибка после установки: {e}")
     
     def _create_cleanup_shortcut(self):
         """Создать ярлык удаления FFmpeg на рабочем столе"""
