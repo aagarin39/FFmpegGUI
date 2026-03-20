@@ -23,33 +23,26 @@ from PyQt6.QtGui import QFont, QAction
 
 # Импорт модулей проекта
 if getattr(sys, 'frozen', False):
+    # Запущен как .exe (PyInstaller)
     import src.core.ffmpeg
     import src.core.ffmpeg_installer
     import src.core.ffmpeg_updater
     import src.core.presets
-    from src.platform import PlatformManager
-    from src.core.config import get_config
+    import src.platforms
     
     FFmpegWrapper = src.core.ffmpeg.FFmpegWrapper
     PresetManager = src.core.presets.PresetManager
     Preset = src.core.presets.Preset
     FFmpegInstaller = src.core.ffmpeg_installer.FFmpegInstaller
     FFmpegUpdater = src.core.ffmpeg_updater.FFmpegUpdater
+    PlatformManager = src.platforms.PlatformManager
 else:
-    try:
-        from .core.ffmpeg import FFmpegWrapper
-        from .core.ffmpeg_installer import FFmpegInstaller
-        from .core.ffmpeg_updater import FFmpegUpdater
-        from .core.presets import PresetManager, Preset
-        from .platforms import PlatformManager
-        from .core.config import get_config
-    except ImportError:
-        from core.ffmpeg import FFmpegWrapper
-        from core.ffmpeg_installer import FFmpegInstaller
-        from core.ffmpeg_updater import FFmpegUpdater
-        from core.presets import PresetManager, Preset
-        from platforms import PlatformManager
-        from core.config import get_config
+    # Запущен как .py (разработка)
+    from core.ffmpeg import FFmpegWrapper
+    from core.ffmpeg_installer import FFmpegInstaller
+    from core.ffmpeg_updater import FFmpegUpdater
+    from core.presets import PresetManager, Preset
+    from platforms import PlatformManager
 
 
 class WorkerThread(QThread):
