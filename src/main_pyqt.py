@@ -987,6 +987,7 @@ class MainWindow(QMainWindow):
     
     def _finish_install(self, ok: bool, create_shortcut: bool = False):
         """Завершить установку (вызывается в главном потоке)"""
+        print(f"DEBUG: _finish_install(ok={ok}, create_shortcut={create_shortcut})")
         self._check_ffmpeg()
         if ok:
             version = FFmpegInstaller.get_ffmpeg_version()
@@ -994,42 +995,53 @@ class MainWindow(QMainWindow):
             
             # Создаём ярлык если попросили
             if create_shortcut:
+                print(f"DEBUG: Creating shortcut...")
                 self._create_cleanup_shortcut()
     
     def _create_cleanup_shortcut(self):
         """Создать ярлык удаления FFmpeg на рабочем столе"""
         try:
-            # Путь к cleanup_ffmpeg.py
-            cleanup_py = Path(__file__).parent / "cleanup_ffmpeg.py"
-            
-            if not cleanup_py.exists():
-                return
-            
             # Рабочий стол
             desktop = Path.home() / "Desktop"
             shortcut_name = "Удалить FFmpeg.lnk"
             shortcut_path = desktop / shortcut_name
+            
+            # Путь к Cleanup_FFmpeg.exe
+            if getattr(sys, 'frozen', False):
+                # Запущен как .exe - ярлык на Cleanup_FFmpeg.exe в той же папке
+                cleanup_exe = Path(sys.executable).parent / "Cleanup_FFmpeg.exe"
+            else:
+                # Запущен как .py - используем cleanup_ffmpeg.py
+                cleanup_exe = Path(__file__).parent / "cleanup_ffmpeg.py"
+            
+            if not cleanup_exe.exists():
+                print(f"Cleanup не найден: {cleanup_exe}")
+                return
             
             # Создаём ярлык через WScript
             import subprocess
             vbs_script = f'''
 Set WshShell = CreateObject("WScript.Shell")
 Set oLink = WshShell.CreateShortcut("{shortcut_path}")
-oLink.TargetPath = "{sys.executable}"
-oLink.Arguments = "{cleanup_py}"
-oLink.WorkingDirectory = "{cleanup_py.parent}"
+oLink.TargetPath = "{cleanup_exe}"
+oLink.WorkingDirectory = "{cleanup_exe.parent}"
 oLink.Description = "Удалить FFmpeg и все данные программы"
 oLink.IconLocation = "shell32.dll,161"
 oLink.Save
 '''
             vbs_path = Path(tempfile.gettempdir()) / "create_shortcut.vbs"
             vbs_path.write_text(vbs_script)
-            subprocess.run(["cscript", "//nologo", str(vbs_path)], capture_output=True)
+            result = subprocess.run(["cscript", "//nologo", str(vbs_path)], capture_output=True, text=True)
             
-            self.status_bar.showMessage("✓ Ярлык удаления создан на рабочем столе", 5000)
+            if result.returncode == 0:
+                self.status_bar.showMessage("✓ Ярлык удаления создан на рабочем столе", 5000)
+            else:
+                print(f"CScript error: {result.stderr}")
             
         except Exception as e:
             print(f"Failed to create shortcut: {e}")
+            import traceback
+            traceback.print_exc()
     
     def _select_folder(self):
         # По умолчанию открываем папку пользователя
