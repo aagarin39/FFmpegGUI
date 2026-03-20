@@ -594,9 +594,11 @@ class MainWindow(QMainWindow):
         header.addWidget(title)
         header.addStretch()
         
-        self.status_label = QLabel("Проверка...")
-        self.status_label.setStyleSheet("color: #6b7280; font-size: 12px;")
-        header.addWidget(self.status_label)
+        self.ffmpeg_status_label = QLabel("Проверка...")
+        self.ffmpeg_status_label.setStyleSheet("color: #6b7280; font-size: 12px;")
+        self.ffmpeg_status_label.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.ffmpeg_status_label.mousePressEvent = self._on_ffmpeg_status_click
+        header.addWidget(self.ffmpeg_status_label)
         
         layout.addLayout(header)
         
@@ -775,9 +777,9 @@ class MainWindow(QMainWindow):
         # Статус бар
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        self.status_label = QLabel("")
-        self.status_label.setStyleSheet("font-size: 12px;")
-        self.status_bar.addWidget(self.status_label)
+        self.convert_status_label = QLabel("")
+        self.convert_status_label.setStyleSheet("font-size: 12px;")
+        self.status_bar.addWidget(self.convert_status_label)
     
     def _check_ffmpeg(self):
         """Проверка наличия FFmpeg с использованием PlatformManager."""
@@ -795,14 +797,14 @@ class MainWindow(QMainWindow):
         
         if self.ffmpeg_available:
             self.ffmpeg_version = FFmpegInstaller.get_ffmpeg_version()
-            self.status_label.setText(f"✓ FFmpeg {self.ffmpeg_version}")
-            self.status_label.setStyleSheet("color: #22c55e; font-size: 12px;")
-            self.status_label.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.ffmpeg_status_label.setText(f"✓ FFmpeg {self.ffmpeg_version}")
+            self.ffmpeg_status_label.setStyleSheet("color: #22c55e; font-size: 12px;")
+            self.ffmpeg_status_label.setCursor(Qt.CursorShape.PointingHandCursor)
             self.install_banner.hide()
             QTimer.singleShot(8000, self._check_updates)
         else:
-            self.status_label.setText("✗ FFmpeg не найден")
-            self.status_label.setStyleSheet("color: #ef4444; font-size: 12px;")
+            self.ffmpeg_status_label.setText("✗ FFmpeg не найден")
+            self.ffmpeg_status_label.setStyleSheet("color: #ef4444; font-size: 12px;")
             self.install_banner.show()
     
     def _check_updates(self):
@@ -817,6 +819,10 @@ class MainWindow(QMainWindow):
         dlg = PresetBuilderDialog(self, self.preset_manager)
         dlg.show()
     
+    def _on_ffmpeg_status_click(self, event):
+        """Обработка клика на статус FFmpeg"""
+        self._ffmpeg_menu(None)
+    
     def _ffmpeg_menu(self, event):
         if not self.ffmpeg_available:
             return
@@ -830,7 +836,7 @@ class MainWindow(QMainWindow):
         menu.addAction("📁 Открыть папку", lambda: platform.open_file_explorer(install_dir))
         menu.addAction("🗑️ Удалить", self._uninstall_ffmpeg)
         
-        menu.exec(self.status_label.mapToGlobal(event.pos()))
+        menu.exec(self.ffmpeg_status_label.mapToGlobal(event.pos()))
     
     def _uninstall_ffmpeg(self):
         if FFmpegInstaller.uninstall():
@@ -1008,29 +1014,29 @@ class MainWindow(QMainWindow):
     
     def _convert(self):
         if not self.ffmpeg_available:
-            self.status_label.setText("✗ FFmpeg не найден")
-            self.status_label.setStyleSheet("color: #ef4444;")
+            self.convert_status_label.setText("✗ FFmpeg не найден")
+            self.convert_status_label.setStyleSheet("color: #ef4444;")
             return
         
         # Получаем выбранные файлы
         selected_files = self._get_selected_files()
         
         if not selected_files:
-            self.status_label.setText("⚠️ Выберите файлы")
-            self.status_label.setStyleSheet("color: #f59e0b;")
+            self.convert_status_label.setText("⚠️ Выберите файлы")
+            self.convert_status_label.setStyleSheet("color: #f59e0b;")
             return
         
         if not self.selected_preset:
-            self.status_label.setText("⚠️ Нет пресета")
-            self.status_label.setStyleSheet("color: #f59e0b;")
+            self.convert_status_label.setText("⚠️ Нет пресета")
+            self.convert_status_label.setStyleSheet("color: #f59e0b;")
             return
         
         self.convert_btn.setEnabled(False)
         self.cancel_btn.setEnabled(True)
         self.progress_bar.setValue(0)
         self.progress_bar.setMaximum(len(selected_files))
-        self.status_label.setText("Конвертация...")
-        self.status_label.setStyleSheet("color: #f59e0b;")
+        self.convert_status_label.setText("Конвертация...")
+        self.convert_status_label.setStyleSheet("color: #f59e0b;")
         
         out = Path(self.selected_folder) / "output"
         out.mkdir(exist_ok=True)
@@ -1045,8 +1051,8 @@ class MainWindow(QMainWindow):
         """Отмена конвертации"""
         if self.worker and self.worker.isRunning():
             self.worker.kill()  # Мгновенное завершение ffmpeg.exe
-            self.status_label.setText("⚠️ Отмена...")
-            self.status_label.setStyleSheet("color: #f59e0b;")
+            self.convert_status_label.setText("⚠️ Отмена...")
+            self.convert_status_label.setStyleSheet("color: #f59e0b;")
     
     def _on_progress(self, current, name):
         """Обновление прогресса"""
@@ -1061,18 +1067,19 @@ class MainWindow(QMainWindow):
         
         if err == 0:
             # Всё успешно
-            self.status_label.setText(f"✓ Успешно: {ok} из {total}")
-            self.status_label.setStyleSheet("color: #22c55e;")
+            self.convert_status_label.setText(f"✓ Успешно: {ok} из {total}")
+            self.convert_status_label.setStyleSheet("color: #22c55e;")
         elif ok == 0:
             # Все файлы с ошибкой
-            self.status_label.setText(f"✗ Ошибка: 0 из {total}")
-            self.status_label.setStyleSheet("color: #f59e0b;")
+            self.convert_status_label.setText(f"✗ Ошибка: 0 из {total}")
+            self.convert_status_label.setStyleSheet("color: #f59e0b;")
         else:
             # Частичный успех
-            self.status_label.setText(f"⚠️ Успешно: {ok} из {total}, ошибок: {err}")
-            self.status_label.setStyleSheet("color: #f59e0b;")
+            self.convert_status_label.setText(f"⚠️ Успешно: {ok} из {total}, ошибок: {err}")
+            self.convert_status_label.setStyleSheet("color: #f59e0b;")
         
-        self._log(f"=== Завершено: {ok} успешно, {err} ошибок ===")
+        # Очистка статуса через 30 секунд
+        QTimer.singleShot(30000, lambda: self.convert_status_label.setText(""))
     
     def _log(self, msg):
         t = datetime.datetime.now().strftime("%H:%M:%S")
