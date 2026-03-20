@@ -1,13 +1,13 @@
 """
 FFmpeg Cleanup Utility
-Удаляет папку %USERPROFILE%\FFmpegGUI\ с FFmpeg и настройками
+Удаляет папку %USERPROFILE%\\FFmpegGUI\\ с FFmpeg и настройками
 """
 import sys
 import shutil
 from pathlib import Path
 
 from PyQt6.QtWidgets import (
-    QApplication, QDialog, QVBoxLayout, QLabel, QPushButton,
+    QApplication, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QMessageBox, QFrame, QProgressBar
 )
 from PyQt6.QtCore import Qt
