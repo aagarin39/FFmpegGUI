@@ -775,8 +775,9 @@ class MainWindow(QMainWindow):
         # Статус бар
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        self.convert_status = QLabel("")
-        self.status_bar.addWidget(self.convert_status)
+        self.status_label = QLabel("")
+        self.status_label.setStyleSheet("font-size: 12px;")
+        self.status_bar.addWidget(self.status_label)
     
     def _check_ffmpeg(self):
         """Проверка наличия FFmpeg с использованием PlatformManager."""
@@ -1007,25 +1008,29 @@ class MainWindow(QMainWindow):
     
     def _convert(self):
         if not self.ffmpeg_available:
-            self.status_bar.showMessage("✗ FFmpeg не найден", 3000)
+            self.status_label.setText("✗ FFmpeg не найден")
+            self.status_label.setStyleSheet("color: #ef4444;")
             return
         
         # Получаем выбранные файлы
         selected_files = self._get_selected_files()
         
         if not selected_files:
-            self.status_bar.showMessage("⚠️ Выберите файлы", 3000)
+            self.status_label.setText("⚠️ Выберите файлы")
+            self.status_label.setStyleSheet("color: #f59e0b;")
             return
         
         if not self.selected_preset:
-            self.status_bar.showMessage("⚠️ Нет пресета", 3000)
+            self.status_label.setText("⚠️ Нет пресета")
+            self.status_label.setStyleSheet("color: #f59e0b;")
             return
         
         self.convert_btn.setEnabled(False)
         self.cancel_btn.setEnabled(True)
         self.progress_bar.setValue(0)
         self.progress_bar.setMaximum(len(selected_files))
-        self.status_bar.showMessage("Конвертация...", 3000)
+        self.status_label.setText("Конвертация...")
+        self.status_label.setStyleSheet("color: #f59e0b;")
         
         out = Path(self.selected_folder) / "output"
         out.mkdir(exist_ok=True)
@@ -1040,7 +1045,8 @@ class MainWindow(QMainWindow):
         """Отмена конвертации"""
         if self.worker and self.worker.isRunning():
             self.worker.kill()  # Мгновенное завершение ffmpeg.exe
-            self.status_bar.showMessage("⚠️ Отмена...", 3000)
+            self.status_label.setText("⚠️ Отмена...")
+            self.status_label.setStyleSheet("color: #f59e0b;")
     
     def _on_progress(self, current, name):
         """Обновление прогресса"""
@@ -1055,13 +1061,16 @@ class MainWindow(QMainWindow):
         
         if err == 0:
             # Всё успешно
-            self.status_bar.showMessage(f"✓ Успешно: {ok} из {total}", 10000)
+            self.status_label.setText(f"✓ Успешно: {ok} из {total}")
+            self.status_label.setStyleSheet("color: #22c55e;")
         elif ok == 0:
             # Все файлы с ошибкой
-            self.status_bar.showMessage(f"✗ Ошибка: 0 из {total}", 10000)
+            self.status_label.setText(f"✗ Ошибка: 0 из {total}")
+            self.status_label.setStyleSheet("color: #f59e0b;")
         else:
             # Частичный успех
-            self.status_bar.showMessage(f"⚠️ Успешно: {ok} из {total}, ошибок: {err}", 10000)
+            self.status_label.setText(f"⚠️ Успешно: {ok} из {total}, ошибок: {err}")
+            self.status_label.setStyleSheet("color: #f59e0b;")
         
         self._log(f"=== Завершено: {ok} успешно, {err} ошибок ===")
     
