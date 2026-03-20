@@ -141,8 +141,10 @@ class FFmpegWrapper:
             args.extend(["-g", "250", "-tune", "hq", "-rc-lookahead", "60"])
         elif preset.hw_accelerator == "qsv":
             args.extend(["-c:v", f"{preset.codec_type}_qsv"])
+            # QSV требует совместимые параметры
+            # Используем CQP (constant quantization parameter) вместо lookahead
             args.extend(["-preset", "fast", "-q", str(preset.cq)])
-            args.extend(["-look_ahead", "1", "-b_ref_mode", "middle"])
+            # look_ahead и b_ref_mode несовместимы с constant qscale
         elif preset.hw_accelerator == "amf":
             args.extend(["-c:v", f"{preset.codec_type}_amf"])
             # AMF использует qp_i/qp_p вместо cq для качества
