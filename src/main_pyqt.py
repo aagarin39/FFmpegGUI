@@ -618,7 +618,7 @@ class MainWindow(QMainWindow):
         
         # Иконка состояния
         self.install_banner_icon = QLabel("⚠️")
-        self.install_banner_icon.setStyleSheet("font-size: 28px; padding: 5px;")
+        self.install_banner_icon.setStyleSheet("font-size: 28px; padding: 5px; background: transparent;")
         banner_layout.addWidget(self.install_banner_icon)
         
         # Текстовый блок (заголовок + описание)
@@ -631,6 +631,8 @@ class MainWindow(QMainWindow):
             font-size: 14px; 
             font-weight: bold;
             font-family: "Segoe UI";
+            background: transparent;
+            border: none;
         """)
         text_layout.addWidget(self.install_banner_title)
         
@@ -639,6 +641,8 @@ class MainWindow(QMainWindow):
             color: rgba(255, 255, 255, 0.85); 
             font-size: 12px;
             font-family: "Segoe UI";
+            background: transparent;
+            border: none;
         """)
         text_layout.addWidget(self.install_banner_desc)
         
