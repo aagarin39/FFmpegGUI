@@ -21,13 +21,13 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize, QTimer
 from PyQt6.QtGui import QFont, QAction, QIcon
 
-def get_resource_path(relative_path: str) -> Path:
+def get_resource_path(relative_path: str) -> str:
     """Получить путь к ресурсу (иконки, изображения)"""
     if getattr(sys, 'frozen', False):
         base_path = Path(sys._MEIPASS)
     else:
         base_path = Path(__file__).parent
-    return base_path / relative_path
+    return str(base_path / relative_path)
 
 
 # Импорт модулей проекта
