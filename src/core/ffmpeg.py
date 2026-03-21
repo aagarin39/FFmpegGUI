@@ -1,5 +1,6 @@
 import platform
 import subprocess
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -49,11 +50,26 @@ class FFmpegWrapper:
         else:
             return False
         
-        cmd = [self.ffmpeg_path, "-y", "-i", input_file] + preset_args + [output_file]
+        cmd = [self.ffmpeg_path, "-y", "-i", input_file, "-nostats", "-loglevel", "error"] + preset_args + [output_file]
         process = None
         
         try:
-            process = subprocess.Popen(cmd)
+            if sys.platform == "win32":
+                CREATE_NO_WINDOW = 0x08000000
+                process = subprocess.Popen(
+                    cmd,
+                    creationflags=CREATE_NO_WINDOW,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    stdin=subprocess.DEVNULL
+                )
+            else:
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    stdin=subprocess.DEVNULL
+                )
             
             if worker_thread:
                 worker_thread.process = process
