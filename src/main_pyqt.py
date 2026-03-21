@@ -598,29 +598,99 @@ class MainWindow(QMainWindow):
         
         layout.addLayout(header)
         
-        # Баннер установки
+        # Баннер установки с современным дизайном
         self.install_banner = QFrame()
-        self.install_banner.setStyleSheet("background-color: #d97706; padding: 10px;")
+        self.install_banner.setObjectName("installBanner")
+        self.install_banner.setFixedHeight(70)
+        self.install_banner.setStyleSheet("""
+            QFrame#installBanner {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #d97706, stop:1 #b45309);
+                border-radius: 8px;
+                padding: 5px;
+            }
+        """)
         self.install_banner.hide()
         
         banner_layout = QHBoxLayout(self.install_banner)
-        self.install_banner_label = QLabel("⚠️  FFmpeg не найден. Установите для работы.")
-        self.install_banner_label.setStyleSheet("color: white; font-weight: bold;")
-        banner_layout.addWidget(self.install_banner_label)
+        banner_layout.setContentsMargins(20, 10, 20, 10)
+        banner_layout.setSpacing(15)
         
+        # Иконка состояния
+        self.install_banner_icon = QLabel("⚠️")
+        self.install_banner_icon.setStyleSheet("font-size: 28px; padding: 5px;")
+        banner_layout.addWidget(self.install_banner_icon)
+        
+        # Текстовый блок (заголовок + описание)
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(2)
+        
+        self.install_banner_title = QLabel("FFmpeg не найден")
+        self.install_banner_title.setStyleSheet("""
+            color: white; 
+            font-size: 14px; 
+            font-weight: bold;
+            font-family: "Segoe UI";
+        """)
+        text_layout.addWidget(self.install_banner_title)
+        
+        self.install_banner_desc = QLabel("Установите FFmpeg для работы конвертера")
+        self.install_banner_desc.setStyleSheet("""
+            color: rgba(255, 255, 255, 0.85); 
+            font-size: 12px;
+            font-family: "Segoe UI";
+        """)
+        text_layout.addWidget(self.install_banner_desc)
+        
+        banner_layout.addLayout(text_layout)
+        banner_layout.addStretch()
+        
+        # Прогресс-бар (на всю ширину баннера)
         self.install_progress = QProgressBar()
         self.install_progress.setRange(0, 100)
         self.install_progress.setValue(0)
-        self.install_progress.setFixedWidth(200)
-        self.install_progress.setStyleSheet("QProgressBar { background-color: #b45309; border-radius: 4px; } QProgressBar::chunk { background-color: #15803d; }")
+        self.install_progress.setFixedHeight(8)
+        self.install_progress.setTextVisible(False)
+        self.install_progress.setStyleSheet("""
+            QProgressBar {
+                background-color: rgba(255, 255, 255, 0.2);
+                border-radius: 4px;
+            }
+            QProgressBar::chunk {
+                background-color: white;
+                border-radius: 4px;
+            }
+        """)
         self.install_progress.hide()
         banner_layout.addWidget(self.install_progress)
         
+        # Кнопка установки
         self.install_btn = QPushButton("Установить")
-        self.install_btn.setStyleSheet("QPushButton { background-color: #15803d; color: white; padding: 8px 20px; border-radius: 4px; font-weight: bold; } QPushButton:hover { background-color: #166534; } QPushButton:disabled { background-color: #6b7280; }")
+        self.install_btn.setFixedHeight(36)
+        self.install_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.install_btn.setStyleSheet("""
+            QPushButton {
+                background-color: white;
+                color: #d97706;
+                font-size: 13px;
+                font-weight: bold;
+                font-family: "Segoe UI";
+                border-radius: 6px;
+                padding: 8px 24px;
+            }
+            QPushButton:hover {
+                background-color: #f9fafb;
+            }
+            QPushButton:pressed {
+                background-color: #e5e7eb;
+            }
+            QPushButton:disabled {
+                background-color: rgba(255, 255, 255, 0.5);
+                color: rgba(0, 0, 0, 0.3);
+            }
+        """)
         self.install_btn.clicked.connect(self._install_ffmpeg)
         banner_layout.addWidget(self.install_btn)
-        banner_layout.addStretch()
         
         layout.addWidget(self.install_banner)
         
@@ -813,7 +883,16 @@ class MainWindow(QMainWindow):
         else:
             self.ffmpeg_status_label.setText("✗ FFmpeg не найден")
             self.ffmpeg_status_label.setStyleSheet("color: #ef4444; font-size: 12px;")
+            # После удаления показываем баннер
             self.install_banner.show()
+            # Сбрасываем прогресс и кнопку
+            self.install_progress.hide()
+            self.install_progress.setValue(0)
+            self.install_btn.setEnabled(True)
+            self.install_btn.setText("Установить")
+            self.install_banner_icon.setText("⚠️")
+            self.install_banner_title.setText("FFmpeg не найден")
+            self.install_banner_desc.setText("Установите FFmpeg для работы конвертера")
     
     def _check_updates(self):
         """Проверить обновления и показать информацию"""
@@ -970,7 +1049,8 @@ class MainWindow(QMainWindow):
     def _update_install_progress(self, value: int):
         """Обновление прогресс-бара установки"""
         self.install_progress.setValue(value)
-        self.install_banner_label.setText(f"⏳ Установка FFmpeg... {value}%")
+        self.install_banner_title.setText(f"Загрузка FFmpeg...")
+        self.install_banner_desc.setText(f"Пожалуйста, дождитесь завершения ({value}%)")
         self.status_bar.showMessage(f"Установка... {value}%", 2000)
     
     def _install_done(self, ok: bool):
@@ -1002,7 +1082,9 @@ class MainWindow(QMainWindow):
                 self.install_btn.setText("Установить")
                 self.install_progress.hide()
                 self.install_progress.setValue(0)
-                self.install_banner_label.setText("⚠️  FFmpeg не найден. Установите для работы.")
+                self.install_banner_icon.setText("⚠️")
+                self.install_banner_title.setText("FFmpeg не найден")
+                self.install_banner_desc.setText("Установите FFmpeg для работы конвертера")
                 return
             
             # Небольшая задержка чтобы FFmpeg успел записаться на диск
