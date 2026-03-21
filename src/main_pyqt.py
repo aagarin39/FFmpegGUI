@@ -561,7 +561,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("FFmpeg Converter")
-        self.setWindowIcon(QIcon(get_resource_path("assets/icons/icon.png")))
+        self.setWindowIcon(QIcon(get_resource_path("assets/icons/icon.ico")))
         self.resize(1100, 750)
         self.setMinimumSize(850, 600)
         
