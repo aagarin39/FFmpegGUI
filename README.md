@@ -32,7 +32,7 @@ cd FFmpegGUI
 pip install -r requirements.txt
 
 # Запуск приложения
-python src/main_ctk.py
+python src/main_pyqt.py
 ```
 
 ### Автоустановка FFmpeg
@@ -59,8 +59,7 @@ brew install ffmpeg
 ```
 FFmpegGUI/
 ├── src/
-│   ├── main_ctk.py          # Основное приложение (CustomTkinter)
-│   ├── main.py              # Старое приложение (Flet)
+│   ├── main_pyqt.py         # Основное приложение (PyQt6)
 │   └── core/
 │       ├── ffmpeg.py        # Обёртка для FFmpeg
 │       ├── presets.py       # Управление пресетами
@@ -108,7 +107,7 @@ FFmpegGUI/
 pip install -r requirements.txt
 
 # Запуск приложения
-python src/main_ctk.py
+python src/main_pyqt.py
 ```
 
 ### Создание нативного приложения

@@ -1074,8 +1074,6 @@ class MainWindow(QMainWindow):
         try:
             ok = getattr(self, '_install_result_ok', False)
             
-            print(f"DEBUG: _finish_install_safe(ok={ok})")
-            
             if not ok:
                 self._log("✗ Ошибка установки FFmpeg")
                 self.convert_status_label.setText("✗ Ошибка установки FFmpeg")
@@ -1162,7 +1160,6 @@ timeout /t 3 /nobreak >nul
 exit
 '''
             bat_path.write_text(bat_content, encoding='cp866')
-            print(f"DEBUG: Created BAT uninstaller at {bat_path}")
             
         except Exception as e:
             print(f"ERROR creating uninstaller: {e}")
@@ -1174,8 +1171,6 @@ exit
             desktop = Path.home() / "Desktop"
             shortcut_name = "Удалить FFmpeg.lnk"
             shortcut_path = desktop / shortcut_name
-            
-            print(f"DEBUG: Creating shortcut at {shortcut_path}")
             
             # Ярлык на Uninstall_FFmpeg.bat
             bat_path = Path.home() / "FFmpegGUI" / "Uninstall_FFmpeg.bat"
@@ -1191,18 +1186,15 @@ oLink.Description = "Удалить FFmpegGUI (600 MB)"
 oLink.IconLocation = "shell32.dll,161"
 oLink.Save
 '''
-            print(f"DEBUG: VBS script created")
             vbs_path = Path(tempfile.gettempdir()) / "create_shortcut.vbs"
             vbs_path.write_text(vbs_script)
             
-            print(f"DEBUG: Running cscript")
             result = subprocess.run(["cscript", "//nologo", str(vbs_path)], capture_output=True, text=True)
             
             if result.returncode == 0:
-                print(f"DEBUG: Shortcut created successfully!")
                 self.status_bar.showMessage("✓ Ярлык удаления создан на рабочем столе", 5000)
             else:
-                print(f"DEBUG: CScript error: {result.stderr}")
+                print(f"CScript error: {result.stderr}")
             
         except Exception as e:
             print(f"ERROR creating shortcut: {e}")
