@@ -846,6 +846,16 @@ class MainWindow(QMainWindow):
     
     def _uninstall_ffmpeg(self):
         """Удалить FFmpeg"""
+        # Сначала удаляем ярлык с рабочего стола
+        desktop_shortcut = Path.home() / "Desktop" / "Удалить FFmpeg.lnk"
+        if desktop_shortcut.exists():
+            try:
+                desktop_shortcut.unlink()
+                self._log("✓ Ярлык удаления удалён")
+            except Exception as e:
+                self._log(f"⚠️ Не удалось удалить ярлык: {e}")
+        
+        # Удаляем FFmpeg через Python
         if FFmpegInstaller.uninstall():
             self._log("✓ FFmpeg удалён")
             self._check_ffmpeg()
@@ -988,24 +998,51 @@ class MainWindow(QMainWindow):
             self._log(f"✗ Ошибка после установки: {e}")
     
     def _create_uninstaller(self):
-        """Создать деинсталлятор FFmpeg в папке FFmpegGUI"""
+        """Создать BAT-файл для удаления FFmpeg в папке FFmpegGUI"""
         try:
             uninstall_dir = Path.home() / "FFmpegGUI"
-            uninstall_exe = uninstall_dir / "Uninstall_FFmpeg.exe"
+            uninstall_dir.mkdir(parents=True, exist_ok=True)
+            bat_path = uninstall_dir / "Uninstall_FFmpeg.bat"
             
-            # Копируем текущий exe как деинсталлятор
-            if getattr(sys, 'frozen', False):
-                # Запущен как .exe
-                import shutil
-                shutil.copy2(sys.executable, uninstall_exe)
-                print(f"DEBUG: Created uninstaller at {uninstall_exe}")
-            else:
-                # Запущен как .py - копируем исходник
-                import shutil
-                src = Path(__file__).parent / "uninstall_ffmpeg.py"
-                if src.exists():
-                    shutil.copy2(src, uninstall_dir / "uninstall_ffmpeg.py")
-                    print(f"DEBUG: Copied uninstall_ffmpeg.py")
+            # BAT-файл удаляет всю папку FFmpegGUI (включая себя)
+            bat_content = r'''@echo off
+echo.
+echo ====================================
+echo  FFmpeg Uninstaller
+echo ====================================
+echo.
+
+echo [1/4] Завершение процессов FFmpeg...
+taskkill /F /IM ffmpeg.exe 2>nul
+taskkill /F /IM ffprobe.exe 2>nul
+taskkill /F /IM ffplay.exe 2>nul
+timeout /t 2 /nobreak >nul
+
+echo [2/4] Удаляю ярлык с рабочего стола...
+del /q "%USERPROFILE%\Desktop\Удалить FFmpeg.lnk" 2>nul
+
+echo [3/4] Удаляю папку FFmpegGUI...
+rmdir /s /q "%USERPROFILE%\FFmpegGUI" 2>nul
+if exist "%USERPROFILE%\FFmpegGUI" (
+    echo [ERROR] Не удалось удалить папку FFmpegGUI
+    echo [ERROR] Закройте все программы и попробуйте снова
+    pause
+    exit /b 1
+)
+
+echo [4/4] Готово!
+echo.
+echo ====================================
+echo  FFmpegGUI полностью удалён.
+echo  Освобождено: ~600 MB
+echo ====================================
+echo.
+
+timeout /t 3 /nobreak >nul
+exit
+'''
+            bat_path.write_text(bat_content, encoding='cp866')
+            print(f"DEBUG: Created BAT uninstaller at {bat_path}")
             
         except Exception as e:
             print(f"ERROR creating uninstaller: {e}")
@@ -1020,17 +1057,17 @@ class MainWindow(QMainWindow):
             
             print(f"DEBUG: Creating shortcut at {shortcut_path}")
             
-            # Ярлык на Uninstall_FFmpeg.exe
-            uninstall_exe = Path.home() / "FFmpegGUI" / "Uninstall_FFmpeg.exe"
+            # Ярлык на Uninstall_FFmpeg.bat
+            bat_path = Path.home() / "FFmpegGUI" / "Uninstall_FFmpeg.bat"
             
             # Создаём ярлык через WScript
             import subprocess
             vbs_script = f'''
 Set WshShell = CreateObject("WScript.Shell")
 Set oLink = WshShell.CreateShortcut("{shortcut_path}")
-oLink.TargetPath = "{uninstall_exe}"
-oLink.WorkingDirectory = "{uninstall_exe.parent}"
-oLink.Description = "Удалить FFmpeg (580 MB)"
+oLink.TargetPath = "{bat_path}"
+oLink.WorkingDirectory = "{bat_path.parent}"
+oLink.Description = "Удалить FFmpegGUI (600 MB)"
 oLink.IconLocation = "shell32.dll,161"
 oLink.Save
 '''
@@ -1049,58 +1086,6 @@ oLink.Save
             
         except Exception as e:
             print(f"ERROR creating shortcut: {e}")
-            import traceback
-            traceback.print_exc()
-    
-    def _create_cleanup_shortcut(self):
-        """Создать ярлык удаления FFmpeg на рабочем столе"""
-        print(f"DEBUG: _create_cleanup_shortcut() called")
-        try:
-            # Рабочий стол
-            desktop = Path.home() / "Desktop"
-            shortcut_name = "Удалить FFmpeg.lnk"
-            shortcut_path = desktop / shortcut_name
-            
-            print(f"DEBUG: Desktop={desktop}, shortcut={shortcut_path}")
-            
-            # Ярлык на FFmpegConverter.exe с флагом --cleanup-ffmpeg
-            if getattr(sys, 'frozen', False):
-                # Запущен как .exe
-                main_exe = Path(sys.executable)
-                print(f"DEBUG: Frozen mode, exe={main_exe}")
-            else:
-                # Запущен как .py
-                main_exe = Path(sys.executable)
-                print(f"DEBUG: Dev mode, exe={main_exe}")
-            
-            # Создаём ярлык через WScript
-            import subprocess
-            vbs_script = f'''
-Set WshShell = CreateObject("WScript.Shell")
-Set oLink = WshShell.CreateShortcut("{shortcut_path}")
-oLink.TargetPath = "{main_exe}"
-oLink.Arguments = "--cleanup-ffmpeg"
-oLink.WorkingDirectory = "{main_exe.parent}"
-oLink.Description = "Удалить FFmpeg и все данные программы"
-oLink.IconLocation = "shell32.dll,161"
-oLink.Save
-'''
-            print(f"DEBUG: VBS script created")
-            vbs_path = Path(tempfile.gettempdir()) / "create_shortcut.vbs"
-            vbs_path.write_text(vbs_script)
-            
-            print(f"DEBUG: Running cscript {vbs_path}")
-            result = subprocess.run(["cscript", "//nologo", str(vbs_path)], capture_output=True, text=True)
-            
-            if result.returncode == 0:
-                print(f"DEBUG: Shortcut created successfully!")
-                self.status_bar.showMessage("✓ Ярлык удаления создан на рабочем столе", 5000)
-            else:
-                print(f"DEBUG: CScript error: {result.stderr}")
-                print(f"DEBUG: CScript stdout: {result.stdout}")
-            
-        except Exception as e:
-            print(f"ERROR in _create_cleanup_shortcut: {e}")
             import traceback
             traceback.print_exc()
     
@@ -1339,13 +1324,6 @@ def main():
             ctypes.windll.shcore.SetProcessDpiAwareness(2)
         except:
             pass
-    
-    # Проверка флага --uninstall-ffmpeg
-    if "--uninstall-ffmpeg" in sys.argv:
-        # Запуск режима удаления FFmpeg
-        from uninstall_ffmpeg import main as uninstall_main
-        uninstall_main()
-        return
     
     app = QApplication(sys.argv)
     app.setStyle("Fusion")

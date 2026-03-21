@@ -53,7 +53,6 @@ a = Analysis(
         'src.platforms',
         'urllib.request',
         'zipfile',
-        'uninstall_ffmpeg',
     ],
     hookspath=[],
     hooksconfig={},
