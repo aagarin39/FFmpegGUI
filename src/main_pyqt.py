@@ -604,12 +604,22 @@ class MainWindow(QMainWindow):
         self.install_banner.hide()
         
         banner_layout = QHBoxLayout(self.install_banner)
-        banner_layout.addWidget(QLabel("⚠️  FFmpeg не найден. Установите для работы."))
+        self.install_banner_label = QLabel("⚠️  FFmpeg не найден. Установите для работы.")
+        self.install_banner_label.setStyleSheet("color: white; font-weight: bold;")
+        banner_layout.addWidget(self.install_banner_label)
         
-        install_btn = QPushButton("Установить")
-        install_btn.setStyleSheet("QPushButton { background-color: #15803d; color: white; padding: 8px 20px; border-radius: 4px; font-weight: bold; } QPushButton:hover { background-color: #166534; }")
-        install_btn.clicked.connect(self._install_ffmpeg)
-        banner_layout.addWidget(install_btn)
+        self.install_progress = QProgressBar()
+        self.install_progress.setRange(0, 100)
+        self.install_progress.setValue(0)
+        self.install_progress.setFixedWidth(200)
+        self.install_progress.setStyleSheet("QProgressBar { background-color: #b45309; border-radius: 4px; } QProgressBar::chunk { background-color: #15803d; }")
+        self.install_progress.hide()
+        banner_layout.addWidget(self.install_progress)
+        
+        self.install_btn = QPushButton("Установить")
+        self.install_btn.setStyleSheet("QPushButton { background-color: #15803d; color: white; padding: 8px 20px; border-radius: 4px; font-weight: bold; } QPushButton:hover { background-color: #166534; } QPushButton:disabled { background-color: #6b7280; }")
+        self.install_btn.clicked.connect(self._install_ffmpeg)
+        banner_layout.addWidget(self.install_btn)
         banner_layout.addStretch()
         
         layout.addWidget(self.install_banner)
@@ -945,11 +955,23 @@ class MainWindow(QMainWindow):
         # Скрываем баннер обновления
         self.update_banner.hide()
         
+        # Блокируем кнопку и показываем прогресс
+        self.install_btn.setEnabled(False)
+        self.install_btn.setText("Установка...")
+        self.install_progress.show()
+        self.install_progress.setValue(0)
+        
         # Запускаем установку
         self.installer = InstallerThread()
-        self.installer.progress.connect(lambda p: self.status_bar.showMessage(f"Установка... {p}%", 2000))
+        self.installer.progress.connect(self._update_install_progress)
         self.installer.finished.connect(self._install_done)
         self.installer.start()
+    
+    def _update_install_progress(self, value: int):
+        """Обновление прогресс-бара установки"""
+        self.install_progress.setValue(value)
+        self.install_banner_label.setText(f"⏳ Установка FFmpeg... {value}%")
+        self.status_bar.showMessage(f"Установка... {value}%", 2000)
     
     def _install_done(self, ok: bool):
         """Завершение установки FFmpeg — безопасно для потока"""
@@ -974,6 +996,13 @@ class MainWindow(QMainWindow):
                 self._log("✗ Ошибка установки FFmpeg")
                 self.convert_status_label.setText("✗ Ошибка установки FFmpeg")
                 self.convert_status_label.setStyleSheet("color: #ef4444;")
+                
+                # Возвращаем баннер в исходное состояние
+                self.install_btn.setEnabled(True)
+                self.install_btn.setText("Установить")
+                self.install_progress.hide()
+                self.install_progress.setValue(0)
+                self.install_banner_label.setText("⚠️  FFmpeg не найден. Установите для работы.")
                 return
             
             # Небольшая задержка чтобы FFmpeg успел записаться на диск
@@ -987,6 +1016,11 @@ class MainWindow(QMainWindow):
             # Создаём деинсталлятор и ярлык
             self._create_uninstaller()
             self._create_uninstall_shortcut()
+            
+            # Скрываем баннер установки
+            self.install_banner.hide()
+            self.install_progress.hide()
+            self.install_progress.setValue(0)
             
             # Очищаем ссылку на установщик
             self.installer = None
