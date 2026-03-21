@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
     QSlider, QListWidget, QListWidgetItem
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize, QTimer
-from PyQt6.QtGui import QFont, QAction
+from PyQt6.QtGui import QFont, QAction, QIcon
 
 # Импорт модулей проекта
 if getattr(sys, 'frozen', False):
@@ -552,6 +552,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("FFmpeg Converter")
+        self.setWindowIcon(QIcon("assets/icons/icon.png"))
         self.resize(1100, 750)
         self.setMinimumSize(850, 600)
         
