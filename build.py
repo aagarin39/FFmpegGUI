@@ -38,7 +38,7 @@ a = Analysis(
     ['src/main_pyqt.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('assets/icons', 'assets/icons')],
     hiddenimports=[
         'PyQt6',
         'PyQt6.QtCore',
@@ -86,7 +86,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,
+    icon='assets/icons/icon.ico',
     onefile=True,
 )
 """

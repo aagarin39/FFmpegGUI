@@ -21,6 +21,15 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize, QTimer
 from PyQt6.QtGui import QFont, QAction, QIcon
 
+def get_resource_path(relative_path: str) -> Path:
+    """Получить путь к ресурсу (иконки, изображения)"""
+    if getattr(sys, 'frozen', False):
+        base_path = Path(sys._MEIPASS)
+    else:
+        base_path = Path(__file__).parent
+    return base_path / relative_path
+
+
 # Импорт модулей проекта
 if getattr(sys, 'frozen', False):
     # Запущен как .exe (PyInstaller)
@@ -552,7 +561,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("FFmpeg Converter")
-        self.setWindowIcon(QIcon("assets/icons/icon.png"))
+        self.setWindowIcon(QIcon(get_resource_path("assets/icons/icon.png")))
         self.resize(1100, 750)
         self.setMinimumSize(850, 600)
         
