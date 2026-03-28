@@ -922,7 +922,7 @@ class MainWindow(QMainWindow):
         self.log_text.setMaximumHeight(80)
         log_layout.addWidget(self.log_text)
         
-        layout.addWidget(log_group)
+        layout.addWidget(self.log_group)
         
         # Статус бар
         self.status_bar = QStatusBar()
