@@ -1041,18 +1041,17 @@ class MainWindow(QMainWindow):
             self.install_banner.hide()
             QTimer.singleShot(8000, self._check_updates)
         else:
-            self.ffmpeg_status_label.setText("✗ FFmpeg не найден")
+            self.ffmpeg_status_label.setText(self.tr("✗ FFmpeg не найден"))
             self.ffmpeg_status_label.setStyleSheet("color: #ef4444; font-size: 12px;")
             # После удаления показываем баннер
             self.install_banner.show()
             # Сбрасываем прогресс и кнопку
             self.install_progress.hide()
             self.install_progress.setValue(0)
-            self.install_btn.setEnabled(True)
-            self.install_btn.setText("Установить")
+            self.install_btn.setText(self.tr("Установить"))
             self.install_banner_icon.setText("⚠️")
-            self.install_banner_title.setText("FFmpeg не найден")
-            self.install_banner_desc.setText("Установите FFmpeg для работы конвертера")
+            self.install_banner_title.setText(self.tr("FFmpeg не найден"))
+            self.install_banner_desc.setText(self.tr("Установите FFmpeg для работы конвертера"))
     
     def _check_updates(self):
         """Проверить обновления и показать информацию"""
@@ -1146,24 +1145,24 @@ class MainWindow(QMainWindow):
         layout.setSpacing(15)
         
         # Заголовок
-        title = QLabel("🔄 Доступна новая версия")
+        title = QLabel(self.tr("🔄 Доступна новая версия"))
         title.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
         layout.addWidget(title)
         
         # Информация о версии
         info = QLabel(
-            f"<b>Текущая версия:</b> {self.ffmpeg_version}<br>"
-            f"<b>Новая версия:</b> {update_info['version']}<br>"
-            f"<b>Дата выпуска:</b> {update_info['date'][:10]}"
+            f"<b>{self.tr('Текущая версия:')}</b> {self.ffmpeg_version}<br>"
+            f"<b>{self.tr('Новая версия:')}</b> {update_info['version']}<br>"
+            f"<b>{self.tr('Дата выпуска:')}</b> {update_info['date'][:10]}"
         )
         info.setStyleSheet("font-size: 13px; padding: 10px; background: #1f2937; border-radius: 5px;")
         layout.addWidget(info)
         
         # Описание
         desc = QLabel(
-            "Обновление загрузит и установит новую версию FFmpeg.\n"
+            self.tr("Обновление загрузит и установит новую версию FFmpeg.\n"
             "Старая версия будет заменена.\n"
-            "Пользовательские пресеты сохранятся."
+            "Пользовательские пресеты сохранятся.")
         )
         desc.setStyleSheet("color: #9ca3af; font-size: 12px;")
         layout.addWidget(desc)
@@ -1172,12 +1171,12 @@ class MainWindow(QMainWindow):
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
         
-        cancel_btn = QPushButton("Отмена")
+        cancel_btn = QPushButton(self.tr("Отмена"))
         cancel_btn.setStyleSheet("QPushButton { background: transparent; border: 1px solid #4b5563; padding: 8px 20px; border-radius: 4px; }")
         cancel_btn.clicked.connect(dlg.reject)
         btn_layout.addWidget(cancel_btn)
         
-        update_btn = QPushButton("Обновить")
+        update_btn = QPushButton(self.tr("Обновить"))
         update_btn.setStyleSheet("QPushButton { background-color: #15803d; color: white; padding: 8px 20px; border-radius: 4px; font-weight: bold; }")
         update_btn.clicked.connect(lambda: [dlg.accept(), self._install_ffmpeg()])
         btn_layout.addWidget(update_btn)
@@ -1196,7 +1195,7 @@ class MainWindow(QMainWindow):
         
         # Блокируем кнопку и показываем прогресс
         self.install_btn.setEnabled(False)
-        self.install_btn.setText("Установка...")
+        self.install_btn.setText(self.tr("Установка..."))
         self.install_progress.show()
         self.install_progress.setValue(0)
         
@@ -1209,9 +1208,9 @@ class MainWindow(QMainWindow):
     def _update_install_progress(self, value: int):
         """Обновление прогресс-бара установки"""
         self.install_progress.setValue(value)
-        self.install_banner_title.setText(f"Загрузка FFmpeg...")
-        self.install_banner_desc.setText(f"Пожалуйста, дождитесь завершения ({value}%)")
-        self.status_bar.showMessage(f"Установка... {value}%", 2000)
+        self.install_banner_title.setText(self.tr("Загрузка FFmpeg..."))
+        self.install_banner_desc.setText(self.tr("Пожалуйста, дождитесь завершения ({value}%)").format(value=value))
+        self.status_bar.showMessage(self.tr("Установка... {value}%").format(value=value), 2000)
     
     def _install_done(self, ok: bool):
         """Завершение установки FFmpeg — безопасно для потока"""
@@ -1231,18 +1230,18 @@ class MainWindow(QMainWindow):
             ok = getattr(self, '_install_result_ok', False)
             
             if not ok:
-                self._log("✗ Ошибка установки FFmpeg")
-                self.convert_status_label.setText("✗ Ошибка установки FFmpeg")
+                self._log(self.tr("✗ Ошибка установки FFmpeg"))
+                self.convert_status_label.setText(self.tr("✗ Ошибка установки FFmpeg"))
                 self.convert_status_label.setStyleSheet("color: #ef4444;")
                 
                 # Возвращаем баннер в исходное состояние
                 self.install_btn.setEnabled(True)
-                self.install_btn.setText("Установить")
+                self.install_btn.setText(self.tr("Установить"))
                 self.install_progress.hide()
                 self.install_progress.setValue(0)
                 self.install_banner_icon.setText("⚠️")
-                self.install_banner_title.setText("FFmpeg не найден")
-                self.install_banner_desc.setText("Установите FFmpeg для работы конвертера")
+                self.install_banner_title.setText(self.tr("FFmpeg не найден"))
+                self.install_banner_desc.setText(self.tr("Установите FFmpeg для работы конвертера"))
                 return
             
             # Небольшая задержка чтобы FFmpeg успел записаться на диск
@@ -1363,7 +1362,7 @@ oLink.Save
         
         folder = QFileDialog.getExistingDirectory(
             self,
-            "Папка с файлами",
+            self.tr("Папка с файлами"),
             default_dir,
             QFileDialog.Option.ShowDirsOnly
         )
