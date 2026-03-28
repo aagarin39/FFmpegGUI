@@ -97,6 +97,8 @@
     "Контейнер*": "Container*",
     "Удалить субтитры из видео": "Remove subtitles from video",
     "Конструктор пресетов": "Preset Builder",
+    "Язык изменён на Русский": "Language changed to Russian",
+    "Language changed to English": "Language changed to English",
     "Текущая версия: {current}\nДоступна версия: {latest}\n\nРекомендуется обновить для исправления ошибок и улучшений.": "Current version: {current}\nAvailable version: {latest}\n\nUpdate recommended for bug fixes and improvements."
   }
 }

@@ -538,6 +538,16 @@
         <source>Конструктор пресетов</source>
         <translation>Конструктор пресетов</translation>
     </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="970"/>
+        <source>Язык изменён на Русский</source>
+        <translation>Язык изменён на Русский</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="970"/>
+        <source>Language changed to English</source>
+        <translation>Language changed to English</translation>
+    </message>
 </context>
 <context>
     <name>UpdateDialog</name>

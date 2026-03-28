@@ -960,14 +960,15 @@ class MainWindow(QMainWindow):
     def _change_language(self, new_lang: str):
         """Мгновенное переключение языка."""
         try:
-            self.current_language = "ru" if new_lang == "Русский" else "en"
+            # Исправлено: проверка на вхождение вместо точного совпадения
+            self.current_language = "ru" if "Русский" in new_lang else "en"
             self.translator.set_language(self.current_language)
             
             # Обновить все тексты UI
             self._update_ui_text()
             
             # Feedback
-            msg = "Language changed to English" if self.current_language == "en" else "Язык изменён на Русский"
+            msg = self.tr("Language changed to English") if self.current_language == "en" else self.tr("Язык изменён на Русский")
             self.status_bar.showMessage(msg, 2000)
         except Exception as e:
             print(f"ERROR in _change_language: {e}")
