@@ -276,13 +276,21 @@ class PresetBuilderDialog(QDialog):
         
         # Ускорение
         self.hw_input = QComboBox()
-        self.hw_input.addItems(["nvenc (NVIDIA)", "qsv (Intel)", "amf (AMD)", "cpu (CPU)"])
+        self.hw_input.addItems([
+            self.tr("nvenc (NVIDIA)"),
+            self.tr("qsv (Intel)"),
+            self.tr("amf (AMD)"),
+            self.tr("cpu (CPU)"),
+        ])
         self.hw_input.currentTextChanged.connect(lambda: self._show_help("hw"))
         self.form_layout.addRow(self.tr("Ускорение*"), self.hw_input)
         
         # Кодек
         self.codec_input = QComboBox()
-        self.codec_input.addItems(["H.264 (compatibility)", "H.265/HEVC (efficiency)"])
+        self.codec_input.addItems([
+            self.tr("H.264 (совместимость)"),
+            self.tr("H.265/HEVC (эффективность)"),
+        ])
         self.codec_input.currentTextChanged.connect(lambda: self._show_help("codec"))
         self.form_layout.addRow(self.tr("Кодек*"), self.codec_input)
         
@@ -306,7 +314,12 @@ class PresetBuilderDialog(QDialog):
         
         # Масштабирование
         self.scale_input = QComboBox()
-        self.scale_input.addItems(["No (original)", "1920x Full HD", "1280x HD", "3840x 4K"])
+        self.scale_input.addItems([
+            self.tr("Нет (оригинал)"),
+            self.tr("1920x Full HD"),
+            self.tr("1280x HD"),
+            self.tr("3840x 4K"),
+        ])
         self.scale_input.currentTextChanged.connect(lambda: self._show_help("scale"))
         self.form_layout.addRow(self.tr("Масштаб"), self.scale_input)
         
@@ -314,13 +327,20 @@ class PresetBuilderDialog(QDialog):
         
         # Аудио каналы
         self.audio_input = QComboBox()
-        self.audio_input.addItems(["2 (Stereo)", "6 (5.1 Surround)", "8 (7.1 Surround)"])
+        self.audio_input.addItems([
+            self.tr("2 (Стерео)"),
+            self.tr("6 (5.1 Surround)"),
+            self.tr("8 (7.1 Surround)"),
+        ])
         self.audio_input.currentTextChanged.connect(lambda: self._show_help("audio"))
         self.form_layout.addRow(self.tr("Аудио каналы*"), self.audio_input)
         
         # Контейнер
         self.container_input = QComboBox()
-        self.container_input.addItems(["MKV (universal)", "MP4 (compatibility)"])
+        self.container_input.addItems([
+            self.tr("MKV (универсальный)"),
+            self.tr("MP4 (совместимость)"),
+        ])
         self.container_input.currentTextChanged.connect(lambda: self._show_help("container"))
         self.form_layout.addRow(self.tr("Контейнер*"), self.container_input)
         
@@ -625,29 +645,35 @@ class MainWindow(QMainWindow):
         
         # Language switcher
         self.language_combo = QComboBox()
-        self.language_combo.addItems(["Русский", "English"])
-        self.language_combo.setFixedWidth(120)
+        self.language_combo.addItems(["🇷🇺 Русский", "🇬🇧 English"])
+        self.language_combo.setFixedWidth(160)
+        self.language_combo.setToolTip("Выберите язык интерфейса / Select language")
         self.language_combo.setStyleSheet("""
             QComboBox {
                 background-color: #374151;
                 color: #f9fafb;
                 border-radius: 6px;
                 padding: 8px 12px;
-                font-size: 12px;
+                font-size: 13px;
                 font-family: "Segoe UI";
+                border: 1px solid #4b5563;
             }
             QComboBox::drop-down {
                 border: none;
-                width: 20px;
+                width: 24px;
             }
             QComboBox::down-arrow {
-                image: none;
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-top: 6px solid #f9fafb;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 7px solid #f9fafb;
+                margin-right: 6px;
             }
             QComboBox:hover {
                 background-color: #4b5563;
+                border-color: #6b7280;
+            }
+            QComboBox:focus {
+                border-color: #2563eb;
             }
         """)
         self.language_combo.currentTextChanged.connect(self._change_language)
@@ -1011,10 +1037,9 @@ class MainWindow(QMainWindow):
         
         # Update combo box language
         if hasattr(self, 'language_combo'):
-            current = self.language_combo.currentText()
             self.language_combo.blockSignals(True)
             self.language_combo.clear()
-            self.language_combo.addItems(["Русский", "English"])
+            self.language_combo.addItems(["🇷🇺 Русский", "🇬🇧 English"])
             lang_map = {"ru": 0, "en": 1}
             self.language_combo.setCurrentIndex(lang_map.get(self.current_language, 0))
             self.language_combo.blockSignals(False)

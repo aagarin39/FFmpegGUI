@@ -238,6 +238,155 @@
         <source>Подтверждение</source>
         <translation>Подтверждение</translation>
     </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1010"/>
+        <source>Файлов: {selected}/{total}</source>
+        <translation>Файлов: {selected}/{total}</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1213"/>
+        <source>Установка... {value}%</source>
+        <translation>Установка... {value}%</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1154"/>
+        <source>Текущая версия:</source>
+        <translation>Текущая версия:</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1155"/>
+        <source>Новая версия:</source>
+        <translation>Новая версия:</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1156"/>
+        <source>Дата выпуска:</source>
+        <translation>Дата выпуска:</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1163"/>
+        <source>Обновление загрузит и установит новую версию FFmpeg.
+Старая версия будет заменена.
+Пользовательские пресеты сохранятся.</source>
+        <translation>Обновление загрузит и установит новую версию FFmpeg.
+Старая версия будет заменена.
+Пользовательские пресеты сохранятся.</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1368"/>
+        <source>✗ FFmpeg не найден</source>
+        <translation>✗ FFmpeg не найден</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1376"/>
+        <source>⚠️ Выберите файлы</source>
+        <translation>⚠️ Выберите файлы</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1381"/>
+        <source>⚠️ Нет пресета</source>
+        <translation>⚠️ Нет пресета</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1389"/>
+        <source>Конвертация...</source>
+        <translation>Конвертация...</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1405"/>
+        <source>⚠️ Отмена...</source>
+        <translation>⚠️ Отмена...</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1440"/>
+        <source>⚠️ Сначала выберите папку</source>
+        <translation>⚠️ Сначала выберите папку</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1488"/>
+        <source>✓ Список файлов обновлён</source>
+        <translation>✓ Список файлов обновлён</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1365"/>
+        <source>Папка с файлами</source>
+        <translation>Папка с файлами</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="279"/>
+        <source>nvenc (NVIDIA)</source>
+        <translation>nvenc (NVIDIA)</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="280"/>
+        <source>qsv (Intel)</source>
+        <translation>qsv (Intel)</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="281"/>
+        <source>amf (AMD)</source>
+        <translation>amf (AMD)</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="282"/>
+        <source>cpu (CPU)</source>
+        <translation>cpu (Процессор)</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="286"/>
+        <source>H.264 (совместимость)</source>
+        <translation>H.264 (совместимость)</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="287"/>
+        <source>H.265/HEVC (эффективность)</source>
+        <translation>H.265/HEVC (эффективность)</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="309"/>
+        <source>Нет (оригинал)</source>
+        <translation>Нет (оригинал)</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="310"/>
+        <source>1920x Full HD</source>
+        <translation>1920x Full HD</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="311"/>
+        <source>1280x HD</source>
+        <translation>1280x HD</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="312"/>
+        <source>3840x 4K</source>
+        <translation>3840x 4K</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="317"/>
+        <source>2 (Стерео)</source>
+        <translation>2 (Стерео)</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="318"/>
+        <source>6 (5.1 Surround)</source>
+        <translation>6 (5.1 Surround)</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="319"/>
+        <source>8 (7.1 Surround)</source>
+        <translation>8 (7.1 Surround)</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="323"/>
+        <source>MKV (универсальный)</source>
+        <translation>MKV (универсальный)</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="324"/>
+        <source>MP4 (совместимость)</source>
+        <translation>MP4 (совместимость)</translation>
+    </message>
 </context>
 <context>
     <name>PresetBuilderDialog</name>

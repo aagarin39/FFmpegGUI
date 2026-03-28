@@ -1,0 +1,61 @@
+
+=== src/core/ffmpeg.py ===
+Found 9 string instances
+
+53: cmd = [self.ffmpeg_path, "-y", "-i", input_file, "-nostats", "-loglevel", "error"] + preset_args + [output_file]
+95: args.extend(["-c:v", f"{preset.codec_type}_nvenc"])
+99: args.extend(["-c:v", f"{preset.codec_type}_qsv"])
+101: elif preset.hw_accelerator == "amf":
+102: args.extend(["-c:v", f"{preset.codec_type}_amf"])
+109: args.extend(["-c:v", "libx265", "-preset", "medium", "-crf", str(preset.cq)])
+111: args.extend(["-c:v", "libx264", "-preset", "medium", "-crf", str(preset.cq)])
+114: args.extend(["-vf", f"scale={preset.scale},setsar=1:1,format=yuv420p"])
+116: args.extend(["-vf", "format=yuv420p"])
+
+=== src/core/ffmpeg_installer.py ===
+Found 76 string instances
+
+79: print(f"Missing required file: {file}")
+85: print(f"ffmpeg.exe too small: {ffmpeg_size} bytes")
+91: def rotate_logs(cls):
+92: """Сдвинуть логи: install.log -> .1 -> .2"""
+93: log_base = Path.home() / "FFmpegGUI" / "install.log"
+96: log_2 = log_base.with_suffix('.log.2')
+97: if log_2.exists():
+98: log_2.unlink()
+100: log_1 = log_base.with_suffix('.log.1')
+101: if log_1.exists():
+102: log_1.rename(log_2)
+105: if log_base.exists():
+106: log_base.rename(log_1)
+118: print(f"Uninstalling FFmpeg from {cls.INSTALL_DIR}")
+123: # Возвращаем True (не удаляем app/, logs/ — это настройки приложения)
+126: print(f"Uninstall error: {e}")
+149: print(f"\nTrying mirror {mirror_idx + 1}/{len(cls.MIRROR_URLS)}: {base_url}")
+156: print(f"  Download attempt {attempt + 1}/{max_retries}")
+159: print(f"  Attempt {attempt + 1} failed: {e}")
+164: print(f"  Mirror {mirror_idx + 1} failed, trying next...")
+175: print(f"Downloading from: {cls.FFMPEG_URL}")
+188: print("Using urllib.request...")
+191: print(f"urllib failed: {e1}")
+195: print("Using requests...")
+211: print(f"requests failed: {e2}")
+212: raise Exception(f"Не удалось загрузить: {e1}")
+218: print(f"Download complete: {size_mb:.1f} MB")
+224: print(f"Extracting archive: {zip_path}")
+225: print(f"Archive size: {zip_path.stat().st_size / (1024*1024):.1f} MB")
+232: print(f"Archive contains {len(members)} files")
+
+=== src/core/ffmpeg_updater.py ===
+Found 1 string instances
+
+64: print(f"Update check failed: {e}")
+
+=== src/core/presets.py ===
+Found 5 string instances
+
+28: return f"{self.codec_type}_{self.hw_accelerator}"
+177: hw_accelerator="amf",
+185: hw_accelerator="amf",
+195: hw_accelerator="amf",
+203: hw_accelerator="amf",

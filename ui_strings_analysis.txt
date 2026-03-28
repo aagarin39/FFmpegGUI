@@ -1,0 +1,133 @@
+Found 131 UI string instances in main_pyqt.py
+
+16: QLabel, QPushButton, QComboBox, QProgressBar, QFileDialog,
+17: QScrollArea, QFrame, QMessageBox, QGroupBox, QFormLayout,
+18: QLineEdit, QCheckBox, QTextEdit, QMenu, QStatusBar, QDialog,
+26: if getattr(sys, 'frozen', False):
+30: return str(base_path / relative_path)
+34: if getattr(sys, 'frozen', False):
+100: output = str(self.output_folder / f"{stem}.{preset_suffix}.{ext}")
+146: class PresetBuilderDialog(QDialog):
+186: left_layout.addWidget(QLabel("<b>Сохранённые пресеты</b>"))
+198: self.new_btn = QPushButton("➕ Новый")
+202: self.save_btn = QPushButton("💾 Сохранить")
+207: self.delete_btn = QPushButton("🗑️ Удалить")
+212: self.reset_btn = QPushButton("🔄 Сбросить")
+221: info_box = QGroupBox("Справка")
+223: self.help_label = QLabel("Выберите пресет или создайте новый")
+261: self.form_layout.addRow(QLabel("<hr/>"))
+283: self.cq_label = QLabel("20")
+299: self.form_layout.addRow(QLabel("<hr/>"))
+319: self.modified_label = QLabel("")
+336: self.help_label.setText(self.HELP_TEXTS.get(key, ""))
+340: self.cq_label.setText(str(value))
+351: self.modified_label.setText("✏️ Изменено — сохраните пресет")
+353: self.modified_label.setText("✏️ Новый пресет — введите название и сохраните")
+377: self.modified_label.setText("")
+380: self.name_input.setText(preset.name)
+381: self.desc_input.setText(preset.description)
+400: self.audio_input.setCurrentIndex(audio_map.get(str(preset.audio_channels), 0))
+424: self.modified_label.setText("✏️ Новый пресет — введите название и сохраните")
+470: QMessageBox.warning(self, "Ошибка", "Введите название пресета")
+475: reply = QMessageBox.question(
+478: QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+480: if reply != QMessageBox.StandardButton.Yes:
+485: self.modified_label.setText("✓ Сохранено")
+488: if self.parent() and hasattr(self.parent(), 'preset_combo'):
+496: QMessageBox.information(self, "Удаление", "Сначала выберите пресет")
+500: QMessageBox.information(self, "Удаление", "Сначала выберите пресет")
+504: QMessageBox.warning(
+510: reply = QMessageBox.question(
+513: QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+516: if reply == QMessageBox.StandardButton.Yes:
+523: reply = QMessageBox.question(
+529: QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+530: QMessageBox.StandardButton.No
+533: if reply != QMessageBox.StandardButton.Yes:
+549: if self.parent() and hasattr(self.parent(), 'preset_combo'):
+553: QMessageBox.information(
+598: title = QLabel("FFmpeg Converter")
+603: self.ffmpeg_status_label = QLabel("Проверка...")
+630: self.install_banner_icon = QLabel("⚠️")
+638: self.install_banner_title = QLabel("FFmpeg не найден")
+649: self.install_banner_desc = QLabel("Установите FFmpeg для работы конвертера")
+667: self.install_progress.setTextVisible(False)
+682: self.install_btn = QPushButton("Установить")
+686: QPushButton {
+695: QPushButton:hover {
+698: QPushButton:pressed {
+701: QPushButton:disabled {
+717: self.update_label = QLabel("🔄 Доступна новая версия FFmpeg")
+721: update_btn = QPushButton("Обновить")
+722: update_btn.setStyleSheet("QPushButton { background-color: #15803d; color: white; padding: 8px 15px; border-radius: 4px; 
+726: dismiss_btn = QPushButton("✕")
+727: dismiss_btn.setStyleSheet("QPushButton { background: transparent; border: 1px solid white; color: white; padding: 5px 10
+735: folder_frame = QGroupBox("Папка с файлами")
+738: select_btn = QPushButton("📁 Выбрать папку")
+742: refresh_btn = QPushButton("🔄 Обновить")
+747: self.folder_label = QLabel("Папка не выбрана")
+755: preset_frame = QGroupBox("Настройки конвертации")
+760: top_row.addWidget(QLabel("Пресет:"), 0, Qt.AlignmentFlag.AlignRight)
+769: builder_btn = QPushButton("🛠 Конструктор")
+777: self.preset_info = QLabel("")
+793: files_group = QGroupBox("Файлы")
+808: self.files_count = QLabel("Файлов: 0/0")
+816: select_all_btn = QPushButton("✓ Все")
+821: deselect_all_btn = QPushButton("✗ Все")
+831: progress_group = QGroupBox("Конвертация")
+834: self.convert_btn = QPushButton("▶ Конвертировать")
+836: self.convert_btn.setStyleSheet("QPushButton { background-color: #2563eb; color: white; font-size: 13px; font-weight: bol
+840: self.cancel_btn = QPushButton("⏹ Стоп")
+842: self.cancel_btn.setStyleSheet("QPushButton { background-color: #dc2626; color: white; font-size: 13px; font-weight: bold
+851: self.progress_label = QLabel("")
+859: log_group = QGroupBox("Лог операций")
+872: self.convert_status_label = QLabel("")
+892: self.ffmpeg_status_label.setText(f"✓ FFmpeg {self.ffmpeg_version}")
+898: self.ffmpeg_status_label.setText("✗ FFmpeg не найден")
+906: self.install_btn.setText("Установить")
+907: self.install_banner_icon.setText("⚠️")
+908: self.install_banner_title.setText("FFmpeg не найден")
+909: self.install_banner_desc.setText("Установите FFmpeg для работы конвертера")
+917: self.update_label.setText(
+966: self.convert_status_label.setText("✗ Ошибка удаления")
+978: subprocess.run([sys.executable, str(uninstall_path)])
+980: self.convert_status_label.setText("⚠️ Деинсталлятор не найден")
+989: self.convert_status_label.setText("⚠️ Не удалось проверить обновления")
+994: dlg = QDialog(self)
+1003: title = QLabel("🔄 Доступна новая версия")
+1008: info = QLabel(
+1017: desc = QLabel(
+1029: cancel_btn = QPushButton("Отмена")
+1030: cancel_btn.setStyleSheet("QPushButton { background: transparent; border: 1px solid #4b5563; padding: 8px 20px; border-ra
+1034: update_btn = QPushButton("Обновить")
+1035: update_btn.setStyleSheet("QPushButton { background-color: #15803d; color: white; padding: 8px 20px; border-radius: 4px; 
+1053: self.install_btn.setText("Установка...")
+1066: self.install_banner_title.setText(f"Загрузка FFmpeg...")
+1067: self.install_banner_desc.setText(f"Пожалуйста, дождитесь завершения ({value}%)")
+1085: ok = getattr(self, '_install_result_ok', False)
+1089: self.convert_status_label.setText("✗ Ошибка установки FFmpeg")
+1094: self.install_btn.setText("Установить")
+1097: self.install_banner_icon.setText("⚠️")
+1098: self.install_banner_title.setText("FFmpeg не найден")
+1099: self.install_banner_desc.setText("Установите FFmpeg для работы конвертера")
+1202: result = subprocess.run(["cscript", "//nologo", str(vbs_path)], capture_output=True, text=True)
+1216: default_dir = str(Path.home())
+1226: self.folder_label.setText(folder)
+1271: label = QLabel(f"{f.name}  —  {f.stat().st_size / (1024**3):.2f} GB")
+1280: self.files_list.append({"path": str(f), "checkbox": checkbox, "widget": row})
+1288: self.files_count.setText(f"Файлов: {selected}/{total}")
+1332: label = QLabel(f"{f.name}  —  {f.stat().st_size / (1024**3):.2f} GB")
+1341: self.files_list.append({"path": str(f), "checkbox": checkbox, "widget": row})
+1364: self.preset_info.setText(p.description)
+1368: self.convert_status_label.setText("✗ FFmpeg не найден")
+1376: self.convert_status_label.setText("⚠️ Выберите файлы")
+1381: self.convert_status_label.setText("⚠️ Нет пресета")
+1389: self.convert_status_label.setText("Конвертация...")
+1405: self.convert_status_label.setText("⚠️ Отмена...")
+1411: self.progress_label.setText(name)
+1421: self.convert_status_label.setText(f"✓ Успешно: {ok} из {total}")
+1425: self.convert_status_label.setText(f"✗ Ошибка: 0 из {total}")
+1429: self.convert_status_label.setText(f"⚠️ Успешно: {ok} из {total}, ошибок: {err}")
+1433: QTimer.singleShot(30000, lambda: self.convert_status_label.setText(""))
+1461: QGroupBox {
+1468: QGroupBox::title {
