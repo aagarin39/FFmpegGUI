@@ -21,6 +21,15 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize, QTimer
 from PyQt6.QtGui import QFont, QAction, QIcon
 
+# Импорт i18n модуля
+if getattr(sys, 'frozen', False):
+    import src.i18n
+    Translator = src.i18n.Translator
+    detect_locale = src.i18n.detect_locale
+    get_available_languages = src.i18n.get_available_languages
+else:
+    from src.i18n import Translator, detect_locale, get_available_languages
+
 def get_resource_path(relative_path: str) -> str:
     """Получить путь к ресурсу (иконки, изображения)"""
     if getattr(sys, 'frozen', False):
@@ -47,11 +56,11 @@ if getattr(sys, 'frozen', False):
     PlatformManager = src.platforms.PlatformManager
 else:
     # Запущен как .py (разработка)
-    from core.ffmpeg import FFmpegWrapper
-    from core.ffmpeg_installer import FFmpegInstaller
-    from core.ffmpeg_updater import FFmpegUpdater
-    from core.presets import PresetManager, Preset
-    from platforms import PlatformManager
+    from src.core.ffmpeg import FFmpegWrapper
+    from src.core.ffmpeg_installer import FFmpegInstaller
+    from src.core.ffmpeg_updater import FFmpegUpdater
+    from src.core.presets import PresetManager, Preset
+    from src.platforms import PlatformManager
 
 
 class WorkerThread(QThread):
@@ -162,11 +171,16 @@ class PresetBuilderDialog(QDialog):
         super().__init__(parent)
         self.preset_manager = preset_manager
         self.current_preset = None
+        self.translator = Translator.get_instance()
         self._init_ui()
         self._load_presets_list()
     
+    def tr(self, text: str) -> str:
+        """Translate text to current language."""
+        return self.translator.tr(text)
+    
     def _init_ui(self):
-        self.setWindowTitle("Конструктор пресетов")
+        self.setWindowTitle(self.tr("Конструктор пресетов"))
         self.setMinimumSize(900, 650)
         self.resize(900, 650)
         self.setModal(False)
@@ -183,7 +197,7 @@ class PresetBuilderDialog(QDialog):
         left_layout = QVBoxLayout(left_panel)
         left_layout.setContentsMargins(0, 0, 0, 0)
         
-        left_layout.addWidget(QLabel("<b>Сохранённые пресеты</b>"))
+        left_layout.addWidget(QLabel(self.tr("<b>Сохранённые пресеты</b>")))
         
         self.presets_list = QListWidget()
         self.presets_list.setMinimumHeight(200)
@@ -195,21 +209,21 @@ class PresetBuilderDialog(QDialog):
         btn_layout = QHBoxLayout(btn_frame)
         btn_layout.setContentsMargins(0, 0, 0, 0)
         
-        self.new_btn = QPushButton("➕ Новый")
+        self.new_btn = QPushButton(self.tr("➕ Новый"))
         self.new_btn.clicked.connect(self._new_preset)
         btn_layout.addWidget(self.new_btn)
         
-        self.save_btn = QPushButton("💾 Сохранить")
+        self.save_btn = QPushButton(self.tr("💾 Сохранить"))
         self.save_btn.setStyleSheet("background-color: #15803d; color: white;")
         self.save_btn.clicked.connect(self._save_preset)
         btn_layout.addWidget(self.save_btn)
         
-        self.delete_btn = QPushButton("🗑️ Удалить")
+        self.delete_btn = QPushButton(self.tr("🗑️ Удалить"))
         self.delete_btn.setStyleSheet("background-color: #dc2626; color: white;")
         self.delete_btn.clicked.connect(self._delete_preset)
         btn_layout.addWidget(self.delete_btn)
         
-        self.reset_btn = QPushButton("🔄 Сбросить")
+        self.reset_btn = QPushButton(self.tr("🔄 Сбросить"))
         self.reset_btn.setStyleSheet("background-color: #0891b2; color: white;")
         self.reset_btn.clicked.connect(self._reset_presets)
         btn_layout.addWidget(self.reset_btn)
@@ -218,9 +232,9 @@ class PresetBuilderDialog(QDialog):
         left_layout.addStretch()
         
         # Информация
-        info_box = QGroupBox("Справка")
+        info_box = QGroupBox(self.tr("Справка"))
         info_layout = QVBoxLayout(info_box)
-        self.help_label = QLabel("Выберите пресет или создайте новый")
+        self.help_label = QLabel(self.tr("Выберите пресет или создайте новый"))
         self.help_label.setWordWrap(True)
         self.help_label.setStyleSheet("color: #9ca3af; font-size: 11px;")
         info_layout.addWidget(self.help_label)
@@ -248,29 +262,29 @@ class PresetBuilderDialog(QDialog):
         """Создать поля формы с подсказками"""
         # Название
         self.name_input = QLineEdit()
-        self.name_input.setPlaceholderText("Введите название пресета")
+        self.name_input.setPlaceholderText(self.tr("Введите название пресета"))
         self.name_input.textChanged.connect(lambda: self._show_help("name"))
-        self.form_layout.addRow("Название*", self.name_input)
+        self.form_layout.addRow(self.tr("Название*"), self.name_input)
         
         # Описание
         self.desc_input = QLineEdit()
-        self.desc_input.setPlaceholderText("Краткое описание")
+        self.desc_input.setPlaceholderText(self.tr("Краткое описание"))
         self.desc_input.textChanged.connect(lambda: self._show_help("desc"))
-        self.form_layout.addRow("Описание", self.desc_input)
+        self.form_layout.addRow(self.tr("Описание"), self.desc_input)
         
         self.form_layout.addRow(QLabel("<hr/>"))
         
         # Ускорение
         self.hw_input = QComboBox()
-        self.hw_input.addItems(["nvenc (NVIDIA)", "qsv (Intel)", "amf (AMD)", "cpu (Процессор)"])
+        self.hw_input.addItems(["nvenc (NVIDIA)", "qsv (Intel)", "amf (AMD)", "cpu (CPU)"])
         self.hw_input.currentTextChanged.connect(lambda: self._show_help("hw"))
-        self.form_layout.addRow("Ускорение*", self.hw_input)
+        self.form_layout.addRow(self.tr("Ускорение*"), self.hw_input)
         
         # Кодек
         self.codec_input = QComboBox()
-        self.codec_input.addItems(["H.264 (совместимость)", "H.265/HEVC (эффективность)"])
+        self.codec_input.addItems(["H.264 (compatibility)", "H.265/HEVC (efficiency)"])
         self.codec_input.currentTextChanged.connect(lambda: self._show_help("codec"))
-        self.form_layout.addRow("Кодек*", self.codec_input)
+        self.form_layout.addRow(self.tr("Кодек*"), self.codec_input)
         
         # Качество CQ
         cq_frame = QHBoxLayout()
@@ -288,30 +302,30 @@ class PresetBuilderDialog(QDialog):
         cq_frame.addWidget(self.cq_label)
         
         self.cq_slider.valueChanged.connect(lambda: self._show_help("cq"))
-        self.form_layout.addRow("Качество (CQ)*", cq_frame)
+        self.form_layout.addRow(self.tr("Качество (CQ)*"), cq_frame)
         
         # Масштабирование
         self.scale_input = QComboBox()
-        self.scale_input.addItems(["Нет (оригинал)", "1920x Full HD", "1280x HD", "3840x 4K"])
+        self.scale_input.addItems(["No (original)", "1920x Full HD", "1280x HD", "3840x 4K"])
         self.scale_input.currentTextChanged.connect(lambda: self._show_help("scale"))
-        self.form_layout.addRow("Масштаб", self.scale_input)
+        self.form_layout.addRow(self.tr("Масштаб"), self.scale_input)
         
         self.form_layout.addRow(QLabel("<hr/>"))
         
         # Аудио каналы
         self.audio_input = QComboBox()
-        self.audio_input.addItems(["2 (Стерео)", "6 (5.1 Surround)", "8 (7.1 Surround)"])
+        self.audio_input.addItems(["2 (Stereo)", "6 (5.1 Surround)", "8 (7.1 Surround)"])
         self.audio_input.currentTextChanged.connect(lambda: self._show_help("audio"))
-        self.form_layout.addRow("Аудио каналы*", self.audio_input)
+        self.form_layout.addRow(self.tr("Аудио каналы*"), self.audio_input)
         
         # Контейнер
         self.container_input = QComboBox()
-        self.container_input.addItems(["MKV (универсальный)", "MP4 (совместимость)"])
+        self.container_input.addItems(["MKV (universal)", "MP4 (compatibility)"])
         self.container_input.currentTextChanged.connect(lambda: self._show_help("container"))
-        self.form_layout.addRow("Контейнер*", self.container_input)
+        self.form_layout.addRow(self.tr("Контейнер*"), self.container_input)
         
         # Субтитры
-        self.subs_input = QCheckBox("Удалить субтитры из видео")
+        self.subs_input = QCheckBox(self.tr("Удалить субтитры из видео"))
         self.subs_input.stateChanged.connect(lambda: self._show_help("subs"))
         self.form_layout.addRow("", self.subs_input)
         
@@ -348,9 +362,9 @@ class PresetBuilderDialog(QDialog):
     def _on_modified(self):
         """Отметить форму как изменённую"""
         if self.current_preset:
-            self.modified_label.setText("✏️ Изменено — сохраните пресет")
+            self.modified_label.setText(self.tr("✏️ Изменено — сохраните пресет"))
         else:
-            self.modified_label.setText("✏️ Новый пресет — введите название и сохраните")
+            self.modified_label.setText(self.tr("✏️ Новый пресет — введите название и сохраните"))
     
     def _load_presets_list(self):
         """Загрузить список пресетов"""
@@ -467,14 +481,14 @@ class PresetBuilderDialog(QDialog):
         """Сохранить пресет"""
         preset = self._get_preset_from_form()
         if not preset:
-            QMessageBox.warning(self, "Ошибка", "Введите название пресета")
+            QMessageBox.warning(self, self.tr("Ошибка"), self.tr("Введите название пресета"))
             return
         
         # Проверка на встроенные пресеты
         if self.current_preset and not self.current_preset.id.startswith("custom_"):
             reply = QMessageBox.question(
-                self, "Сохранение",
-                "Это встроенный пресет. Сохранить как новый?",
+                self, self.tr("Сохранение"),
+                self.tr("Это встроенный пресет. Сохранить как новый?"),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
             )
             if reply != QMessageBox.StandardButton.Yes:
@@ -482,7 +496,7 @@ class PresetBuilderDialog(QDialog):
         
         self.preset_manager.add_preset(preset)
         self._load_presets_list()
-        self.modified_label.setText("✓ Сохранено")
+        self.modified_label.setText(self.tr("✓ Сохранено"))
         
         # Обновить комбобокс в главном окне
         if self.parent() and hasattr(self.parent(), 'preset_combo'):
@@ -493,23 +507,23 @@ class PresetBuilderDialog(QDialog):
         """Удалить выбранный пресет"""
         items = self.presets_list.selectedItems()
         if not items:
-            QMessageBox.information(self, "Удаление", "Сначала выберите пресет")
+            QMessageBox.information(self, self.tr("Удаление"), self.tr("Сначала выберите пресет"))
             return
         
         if not self.current_preset:
-            QMessageBox.information(self, "Удаление", "Сначала выберите пресет")
+            QMessageBox.information(self, self.tr("Удаление"), self.tr("Сначала выберите пресет"))
             return
         
         if not self.current_preset.id.startswith("custom_"):
             QMessageBox.warning(
-                self, "Нельзя удалить",
-                "Встроенные пресеты удалять нельзя.\nСоздайте свой пресет с нужными параметрами."
+                self, self.tr("Нельзя удалить"),
+                self.tr("Встроенные пресеты удалять нельзя.\nСоздайте свой пресет с нужными параметрами.")
             )
             return
         
         reply = QMessageBox.question(
-            self, "Подтверждение",
-            f"Удалить пресет '{self.current_preset.name}'?",
+            self, self.tr("Подтверждение"),
+            self.tr("Удалить пресет '{name}'?").format(name=self.current_preset.name),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         
@@ -522,10 +536,8 @@ class PresetBuilderDialog(QDialog):
         """Восстановить стандартные пресеты"""
         reply = QMessageBox.question(
             self,
-            "Восстановление пресетов",
-            "⚠️  Все пользовательские пресеты будут удалены.\n"
-            "Стандартные пресеты будут восстановлены.\n\n"
-            "Продолжить?",
+            self.tr("Восстановление пресетов"),
+            self.tr("⚠️  Все пользовательские пресеты будут удалены.\nСтандартные пресеты будут восстановлены.\n\nПродолжить?"),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No
         )
@@ -552,15 +564,22 @@ class PresetBuilderDialog(QDialog):
         
         QMessageBox.information(
             self,
-            "Готово",
-            "✓ Стандартные пресеты восстановлены"
+            self.tr("Готово"),
+            self.tr("✓ Стандартные пресеты восстановлены")
         )
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("FFmpeg Converter")
+        
+        # Инициализация переводчика
+        self.translator = Translator.get_instance()
+        detected_lang = detect_locale()
+        self.translator.set_language(detected_lang)
+        self.current_language = detected_lang
+        
+        self.setWindowTitle(self.tr("FFmpeg Converter"))
         self.setWindowIcon(QIcon(get_resource_path("assets/icons/icon.ico")))
         self.resize(1100, 750)
         self.setMinimumSize(850, 600)
@@ -577,13 +596,17 @@ class MainWindow(QMainWindow):
         self.preset_manager = PresetManager()
         
         self.selected_folder = None
-        self.files_list = []  # Список кортежей (path, checkbox)
+        self.files_list = []
         self.selected_preset = None
         self.worker = None
         self.installer = None
         
         self._init_ui()
         self._check_ffmpeg()
+    
+    def tr(self, text: str) -> str:
+        """Translate text to current language."""
+        return self.translator.tr(text)
     
     def _init_ui(self):
         # Центральное окно
@@ -595,12 +618,47 @@ class MainWindow(QMainWindow):
         
         # Header
         header = QHBoxLayout()
-        title = QLabel("FFmpeg Converter")
+        title = QLabel(self.tr("FFmpeg Converter"))
         title.setFont(QFont("Segoe UI", 20, QFont.Weight.Bold))
         header.addWidget(title)
         header.addStretch()
         
-        self.ffmpeg_status_label = QLabel("Проверка...")
+        # Language switcher
+        self.language_combo = QComboBox()
+        self.language_combo.addItems(["Русский", "English"])
+        self.language_combo.setFixedWidth(120)
+        self.language_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #374151;
+                color: #f9fafb;
+                border-radius: 6px;
+                padding: 8px 12px;
+                font-size: 12px;
+                font-family: "Segoe UI";
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 6px solid #f9fafb;
+            }
+            QComboBox:hover {
+                background-color: #4b5563;
+            }
+        """)
+        self.language_combo.currentTextChanged.connect(self._change_language)
+        
+        # Set current language
+        lang_map = {"ru": 0, "en": 1}
+        self.language_combo.setCurrentIndex(lang_map.get(self.current_language, 0))
+        
+        header.addWidget(self.language_combo)
+        
+        self.ffmpeg_status_label = QLabel(self.tr("Проверка..."))
         self.ffmpeg_status_label.setStyleSheet("color: #6b7280; font-size: 12px;")
         self.ffmpeg_status_label.setCursor(Qt.CursorShape.PointingHandCursor)
         self.ffmpeg_status_label.mousePressEvent = self._on_ffmpeg_status_click
@@ -679,7 +737,7 @@ class MainWindow(QMainWindow):
         banner_layout.addWidget(self.install_progress)
         
         # Кнопка установки
-        self.install_btn = QPushButton("Установить")
+        self.install_btn = QPushButton(self.tr("Установить"))
         self.install_btn.setFixedHeight(36)
         self.install_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.install_btn.setStyleSheet("""
@@ -714,16 +772,16 @@ class MainWindow(QMainWindow):
         self.update_banner.hide()
         
         update_layout = QHBoxLayout(self.update_banner)
-        self.update_label = QLabel("🔄 Доступна новая версия FFmpeg")
+        self.update_label = QLabel(self.tr("🔄 Доступна новая версия FFmpeg"))
         self.update_label.setStyleSheet("color: white; font-weight: bold;")
         update_layout.addWidget(self.update_label)
         
-        update_btn = QPushButton("Обновить")
+        update_btn = QPushButton(self.tr("Обновить"))
         update_btn.setStyleSheet("QPushButton { background-color: #15803d; color: white; padding: 8px 15px; border-radius: 4px; }")
         update_btn.clicked.connect(self._show_update_dialog)
         update_layout.addWidget(update_btn)
         
-        dismiss_btn = QPushButton("✕")
+        dismiss_btn = QPushButton(self.tr("✕"))
         dismiss_btn.setStyleSheet("QPushButton { background: transparent; border: 1px solid white; color: white; padding: 5px 10px; border-radius: 3px; } QPushButton:hover { background-color: #dc2626; }")
         dismiss_btn.clicked.connect(self.update_banner.hide)
         update_layout.addWidget(dismiss_btn)
@@ -732,32 +790,32 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.update_banner)
         
         # Выбор папки
-        folder_frame = QGroupBox("Папка с файлами")
-        folder_layout = QHBoxLayout(folder_frame)
+        self.folder_group = QGroupBox(self.tr("Папка с файлами"))
+        folder_layout = QHBoxLayout(self.folder_group)
         
-        select_btn = QPushButton("📁 Выбрать папку")
-        select_btn.clicked.connect(self._select_folder)
-        folder_layout.addWidget(select_btn)
+        self.select_folder_btn = QPushButton(self.tr("📁 Выбрать папку"))
+        self.select_folder_btn.clicked.connect(self._select_folder)
+        folder_layout.addWidget(self.select_folder_btn)
         
-        refresh_btn = QPushButton("🔄 Обновить")
-        refresh_btn.clicked.connect(self._refresh_files)
-        refresh_btn.setMaximumWidth(150)
-        folder_layout.addWidget(refresh_btn)
+        self.refresh_btn = QPushButton(self.tr("🔄 Обновить"))
+        self.refresh_btn.clicked.connect(self._refresh_files)
+        self.refresh_btn.setMaximumWidth(150)
+        folder_layout.addWidget(self.refresh_btn)
         
-        self.folder_label = QLabel("Папка не выбрана")
+        self.folder_label = QLabel(self.tr("Папка не выбрана"))
         self.folder_label.setStyleSheet("color: #6b7280;")
         folder_layout.addWidget(self.folder_label)
         folder_layout.addStretch()
         
-        layout.addWidget(folder_frame)
+        layout.addWidget(self.folder_group)
         
         # Пресеты
-        preset_frame = QGroupBox("Настройки конвертации")
-        preset_layout = QVBoxLayout(preset_frame)
+        self.preset_group = QGroupBox(self.tr("Настройки конвертации"))
+        preset_layout = QVBoxLayout(self.preset_group)
         
         # Первая строка: комбобокс + кнопка
         top_row = QHBoxLayout()
-        top_row.addWidget(QLabel("Пресет:"), 0, Qt.AlignmentFlag.AlignRight)
+        top_row.addWidget(QLabel(self.tr("Пресет:")), 0, Qt.AlignmentFlag.AlignRight)
         
         self.preset_combo = QComboBox()
         self.preset_combo.setMinimumWidth(300)
@@ -766,9 +824,9 @@ class MainWindow(QMainWindow):
         self.preset_combo.addItems(presets)
         top_row.addWidget(self.preset_combo, 0, Qt.AlignmentFlag.AlignLeft)
         
-        builder_btn = QPushButton("🛠 Конструктор")
-        builder_btn.clicked.connect(self._open_preset_builder)
-        top_row.addWidget(builder_btn)
+        self.builder_btn = QPushButton(self.tr("🛠 Конструктор"))
+        self.builder_btn.clicked.connect(self._open_preset_builder)
+        top_row.addWidget(self.builder_btn)
         top_row.addStretch()
         
         preset_layout.addLayout(top_row)
@@ -787,11 +845,11 @@ class MainWindow(QMainWindow):
             self.preset_combo.setCurrentIndex(0)
             self._preset_changed(presets[0])
         
-        layout.addWidget(preset_frame)
+        layout.addWidget(self.preset_group)
         
         # Список файлов
-        files_group = QGroupBox("Файлы")
-        files_layout = QVBoxLayout(files_group)
+        self.files_group = QGroupBox(self.tr("Файлы"))
+        files_layout = QVBoxLayout(self.files_group)
         
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -813,31 +871,31 @@ class MainWindow(QMainWindow):
         select_btns.addWidget(self.files_count)
         select_btns.addStretch()
         
-        select_all_btn = QPushButton("✓ Все")
-        select_all_btn.setMaximumWidth(80)
-        select_all_btn.clicked.connect(self._select_all_files)
-        select_btns.addWidget(select_all_btn)
+        self.select_all_btn = QPushButton(self.tr("✓ Все"))
+        self.select_all_btn.setMaximumWidth(80)
+        self.select_all_btn.clicked.connect(self._select_all_files)
+        select_btns.addWidget(self.select_all_btn)
         
-        deselect_all_btn = QPushButton("✗ Все")
-        deselect_all_btn.setMaximumWidth(80)
-        deselect_all_btn.clicked.connect(self._deselect_all_files)
-        select_btns.addWidget(deselect_all_btn)
+        self.deselect_all_btn = QPushButton(self.tr("✗ Все"))
+        self.deselect_all_btn.setMaximumWidth(80)
+        self.deselect_all_btn.clicked.connect(self._deselect_all_files)
+        select_btns.addWidget(self.deselect_all_btn)
         
         files_layout.addLayout(select_btns)
         
-        layout.addWidget(files_group, 1)
+        layout.addWidget(self.files_group)
         
         # Прогресс
-        progress_group = QGroupBox("Конвертация")
-        progress_layout = QHBoxLayout(progress_group)
+        self.progress_group = QGroupBox(self.tr("Конвертация"))
+        progress_layout = QHBoxLayout(self.progress_group)
         
-        self.convert_btn = QPushButton("▶ Конвертировать")
+        self.convert_btn = QPushButton(self.tr("▶ Конвертировать"))
         self.convert_btn.setMinimumHeight(40)
         self.convert_btn.setStyleSheet("QPushButton { background-color: #2563eb; color: white; font-size: 13px; font-weight: bold; border-radius: 4px; padding: 10px; } QPushButton:hover { background-color: #1d4ed8; } QPushButton:disabled { background-color: #4b5563; }")
         self.convert_btn.clicked.connect(self._convert)
         progress_layout.addWidget(self.convert_btn)
         
-        self.cancel_btn = QPushButton("⏹ Стоп")
+        self.cancel_btn = QPushButton(self.tr("⏹ Стоп"))
         self.cancel_btn.setMinimumHeight(40)
         self.cancel_btn.setStyleSheet("QPushButton { background-color: #dc2626; color: white; font-size: 13px; font-weight: bold; border-radius: 4px; padding: 10px; } QPushButton:hover { background-color: #b91c1c; } QPushButton:disabled { background-color: #4b5563; }")
         self.cancel_btn.clicked.connect(self._cancel_conversion)
@@ -853,11 +911,11 @@ class MainWindow(QMainWindow):
         self.progress_label.setStyleSheet("color: #6b7280;")
         progress_layout.addWidget(self.progress_label)
         
-        layout.addWidget(progress_group)
+        layout.addWidget(self.progress_group)
         
         # Лог
-        log_group = QGroupBox("Лог операций")
-        log_layout = QVBoxLayout(log_group)
+        self.log_group = QGroupBox(self.tr("Лог операций"))
+        log_layout = QVBoxLayout(self.log_group)
         
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
@@ -872,6 +930,94 @@ class MainWindow(QMainWindow):
         self.convert_status_label = QLabel("")
         self.convert_status_label.setStyleSheet("font-size: 12px;")
         self.status_bar.addWidget(self.convert_status_label)
+    
+    def _change_language(self, new_lang: str):
+        """Мгновенное переключение языка."""
+        try:
+            self.current_language = "ru" if new_lang == "Русский" else "en"
+            self.translator.set_language(self.current_language)
+            
+            # Обновить все тексты UI
+            self._update_ui_text()
+            
+            # Feedback
+            msg = "Language changed to English" if self.current_language == "en" else "Язык изменён на Русский"
+            self.status_bar.showMessage(msg, 2000)
+        except Exception as e:
+            print(f"ERROR in _change_language: {e}")
+    
+    def _update_ui_text(self):
+        """Обновить все тексты UI при переключении языка."""
+        # Header
+        self.setWindowTitle(self.tr("FFmpeg Converter"))
+        
+        # FFmpeg status
+        if hasattr(self, 'ffmpeg_available'):
+            if self.ffmpeg_available:
+                version = getattr(self, 'ffmpeg_version', '?')
+                self.ffmpeg_status_label.setText(f"✓ FFmpeg {version}")
+            else:
+                self.ffmpeg_status_label.setText(self.tr("✗ FFmpeg не найден"))
+        else:
+            self.ffmpeg_status_label.setText(self.tr("Проверка..."))
+        
+        # Install banner
+        if hasattr(self, 'install_banner_title'):
+            self.install_banner_title.setText(self.tr("FFmpeg не найден"))
+        if hasattr(self, 'install_banner_desc'):
+            self.install_banner_desc.setText(self.tr("Установите FFmpeg для работы конвертера"))
+        if hasattr(self, 'install_btn'):
+            self.install_btn.setText(self.tr("Установить"))
+        
+        # Groups
+        if hasattr(self, 'folder_group'):
+            self.folder_group.setTitle(self.tr("Папка с файлами"))
+        if hasattr(self, 'preset_group'):
+            self.preset_group.setTitle(self.tr("Настройки конвертации"))
+        if hasattr(self, 'files_group'):
+            self.files_group.setTitle(self.tr("Файлы"))
+        if hasattr(self, 'progress_group'):
+            self.progress_group.setTitle(self.tr("Конвертация"))
+        if hasattr(self, 'log_group'):
+            self.log_group.setTitle(self.tr("Лог операций"))
+        
+        # Buttons
+        if hasattr(self, 'select_folder_btn'):
+            self.select_folder_btn.setText(self.tr("📁 Выбрать папку"))
+        if hasattr(self, 'refresh_btn'):
+            self.refresh_btn.setText(self.tr("🔄 Обновить"))
+        if hasattr(self, 'builder_btn'):
+            self.builder_btn.setText(self.tr("🛠 Конструктор"))
+        if hasattr(self, 'select_all_btn'):
+            self.select_all_btn.setText(self.tr("✓ Все"))
+        if hasattr(self, 'deselect_all_btn'):
+            self.deselect_all_btn.setText(self.tr("✗ Все"))
+        if hasattr(self, 'convert_btn'):
+            self.convert_btn.setText(self.tr("▶ Конвертировать"))
+        if hasattr(self, 'cancel_btn'):
+            self.cancel_btn.setText(self.tr("⏹ Стоп"))
+        
+        # Labels
+        if hasattr(self, 'folder_label'):
+            if self.selected_folder:
+                self.folder_label.setText(str(self.selected_folder))
+            else:
+                self.folder_label.setText(self.tr("Папка не выбрана"))
+        
+        if hasattr(self, 'files_count'):
+            total = len(self.files_list)
+            selected = sum(1 for f in self.files_list if f['checkbox'].isChecked())
+            self.files_count.setText(self.tr("Файлов: {selected}/{total}").format(selected=selected, total=total))
+        
+        # Update combo box language
+        if hasattr(self, 'language_combo'):
+            current = self.language_combo.currentText()
+            self.language_combo.blockSignals(True)
+            self.language_combo.clear()
+            self.language_combo.addItems(["Русский", "English"])
+            lang_map = {"ru": 0, "en": 1}
+            self.language_combo.setCurrentIndex(lang_map.get(self.current_language, 0))
+            self.language_combo.blockSignals(False)
     
     def _check_ffmpeg(self):
         """Проверка наличия FFmpeg с использованием PlatformManager."""
