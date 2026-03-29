@@ -550,6 +550,194 @@
     </message>
 </context>
 <context>
+    <name>Preset</name>
+    <!-- NVIDIA presets - H.264 -->
+    <message>
+        <location filename="src/core/presets.py" line="82"/>
+        <source>preset.h264_nvenc_standard.name</source>
+        <translation>H.264 NVIDIA Стандарт</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="83"/>
+        <source>preset.h264_nvenc_standard.description</source>
+        <translation>H.264 NVENC, высокое качество (CQ 20)</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="90"/>
+        <source>preset.h264_nvenc_light.name</source>
+        <translation>H.264 NVIDIA Лёгкий</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="91"/>
+        <source>preset.h264_nvenc_light.description</source>
+        <translation>H.264 NVENC, 1920x, меньший размер (CQ 30)</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="98"/>
+        <source>preset.h264_nvenc_mp4.name</source>
+        <translation>H.264 NVIDIA MP4</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="99"/>
+        <source>preset.h264_nvenc_mp4.description</source>
+        <translation>H.264 NVENC, MP4 контейнер, без субтитров</translation>
+    </message>
+    <!-- NVIDIA presets - H.265 -->
+    <message>
+        <location filename="src/core/presets.py" line="108"/>
+        <source>preset.hevc_nvenc_standard.name</source>
+        <translation>H.265 NVIDIA Стандарт</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="109"/>
+        <source>preset.hevc_nvenc_standard.description</source>
+        <translation>HEVC NVENC, высокое качество (CQ 20)</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="116"/>
+        <source>preset.hevc_nvenc_light.name</source>
+        <translation>H.265 NVIDIA Лёгкий</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="117"/>
+        <source>preset.hevc_nvenc_light.description</source>
+        <translation>HEVC NVENC, 1920x, меньший размер (CQ 30)</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="125"/>
+        <source>preset.hevc_nvenc_mp4.name</source>
+        <translation>H.265 NVIDIA MP4</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="126"/>
+        <source>preset.hevc_nvenc_mp4.description</source>
+        <translation>HEVC NVENC, MP4 контейнер, без субтитров</translation>
+    </message>
+    <!-- Intel QuickSync presets -->
+    <message>
+        <location filename="src/core/presets.py" line="136"/>
+        <source>preset.h264_qsv_standard.name</source>
+        <translation>H.264 Intel QuickSync</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="137"/>
+        <source>preset.h264_qsv_standard.description</source>
+        <translation>H.264 QSV, высокое качество (CQ 20)</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="145"/>
+        <source>preset.h264_qsv_light.name</source>
+        <translation>H.264 Intel QuickSync Лёгкий</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="146"/>
+        <source>preset.h264_qsv_light.description</source>
+        <translation>H.264 QSV, 1920x, меньший размер (CQ 30)</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="154"/>
+        <source>preset.hevc_qsv_standard.name</source>
+        <translation>H.265 Intel QuickSync</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="155"/>
+        <source>preset.hevc_qsv_standard.description</source>
+        <translation>H.265 QSV, высокое качество (CQ 20)</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="163"/>
+        <source>preset.hevc_qsv_light.name</source>
+        <translation>H.265 Intel QuickSync Лёгкий</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="164"/>
+        <source>preset.hevc_qsv_light.description</source>
+        <translation>H.265 QSV, 1920x, меньший размер (CQ 30)</translation>
+    </message>
+    <!-- AMD AMF presets -->
+    <message>
+        <location filename="src/core/presets.py" line="173"/>
+        <source>preset.h264_amf_standard.name</source>
+        <translation>H.264 AMD AMF</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="174"/>
+        <source>preset.h264_amf_standard.description</source>
+        <translation>H.264 AMF, высокое качество (CQ 20)</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="181"/>
+        <source>preset.h264_amf_light.name</source>
+        <translation>H.264 AMD AMF Лёгкий</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="182"/>
+        <source>preset.h264_amf_light.description</source>
+        <translation>H.264 AMF, 1920x, меньший размер (CQ 30)</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="190"/>
+        <source>preset.hevc_amf_standard.name</source>
+        <translation>H.265 AMD AMF</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="191"/>
+        <source>preset.hevc_amf_standard.description</source>
+        <translation>H.265 AMF, высокое качество (CQ 20)</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="198"/>
+        <source>preset.hevc_amf_light.name</source>
+        <translation>H.265 AMD AMF Лёгкий</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="199"/>
+        <source>preset.hevc_amf_light.description</source>
+        <translation>H.265 AMF, 1920x, меньший размер (CQ 30)</translation>
+    </message>
+    <!-- CPU presets -->
+    <message>
+        <location filename="src/core/presets.py" line="208"/>
+        <source>preset.h264_cpu_standard.name</source>
+        <translation>H.264 CPU Стандарт</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="209"/>
+        <source>preset.h264_cpu_standard.description</source>
+        <translation>libx264, высокое качество (CRF 18), медленно</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="216"/>
+        <source>preset.h264_cpu_light.name</source>
+        <translation>H.264 CPU Лёгкий</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="217"/>
+        <source>preset.h264_cpu_light.description</source>
+        <translation>libx264, 1920x, CRF 20, быстрее</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="226"/>
+        <source>preset.hevc_cpu_standard.name</source>
+        <translation>H.265 CPU Стандарт</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="227"/>
+        <source>preset.hevc_cpu_standard.description</source>
+        <translation>libx265, высокое качество (CRF 20), очень медленно</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="234"/>
+        <source>preset.hevc_cpu_light.name</source>
+        <translation>H.265 CPU Лёгкий</translation>
+    </message>
+    <message>
+        <location filename="src/core/presets.py" line="235"/>
+        <source>preset.hevc_cpu_light.description</source>
+        <translation>libx265, 1920x, CRF 22, быстрее</translation>
+    </message>
+</context>
+<context>
     <name>UpdateDialog</name>
     <message>
         <location filename="src/main_pyqt.py" line="994"/>

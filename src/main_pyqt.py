@@ -1044,6 +1044,28 @@ class MainWindow(QMainWindow):
             lang_map = {"ru": 0, "en": 1}
             self.language_combo.setCurrentIndex(lang_map.get(self.current_language, 0))
             self.language_combo.blockSignals(False)
+        
+        # Update preset combo box with localized names
+        if hasattr(self, 'preset_combo') and hasattr(self, 'preset_manager'):
+            self.preset_combo.blockSignals(True)
+            current_index = self.preset_combo.currentIndex()
+            self.preset_combo.clear()
+            
+            # Добавляем локализованные названия пресетов
+            for preset in self.preset_manager.get_all_presets():
+                preset_name_key = f"preset.{preset.id}.name"
+                localized_name = self.tr(preset_name_key)
+                # Если перевод не найден, используем оригинальное имя
+                if localized_name == preset_name_key:
+                    localized_name = preset.name
+                self.preset_combo.addItem(localized_name)
+            
+            # Восстанавливаем текущий выбор
+            if current_index >= 0 and current_index < self.preset_combo.count():
+                self.preset_combo.setCurrentIndex(current_index)
+            elif len(self.preset_manager.get_all_presets()) > 0:
+                self.preset_combo.setCurrentIndex(0)
+            self.preset_combo.blockSignals(False)
     
     def _check_ffmpeg(self):
         """Проверка наличия FFmpeg с использованием PlatformManager."""
@@ -1532,7 +1554,13 @@ oLink.Save
         p = self.preset_manager.get_preset_by_name(name)
         if p:
             self.selected_preset = p
-            self.preset_info.setText(p.description)
+            # Используем перевод описания пресета по ключу
+            preset_description_key = f"preset.{p.id}.description"
+            translated_description = self.tr(preset_description_key)
+            # Если перевод не найден, используем оригинальное описание
+            if translated_description == preset_description_key:
+                translated_description = p.description
+            self.preset_info.setText(translated_description)
     
     def _convert(self):
         if not self.ffmpeg_available:
