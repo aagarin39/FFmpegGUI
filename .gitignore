@@ -65,11 +65,14 @@ ffmpeg/
 !ffmpeg/.gitkeep
 
 # Токены и секреты
-.env
 .env.local
 *.pem
 *.key
 credentials.json
+
+# Промежуточные файлы анализа (генерируются скриптами)
+*_strings.txt
+*_strings_analysis.txt
 
 # Тестовые данные
 .pytest_cache/

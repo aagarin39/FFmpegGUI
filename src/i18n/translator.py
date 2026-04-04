@@ -3,77 +3,74 @@
 import sys
 import json
 from pathlib import Path
-from PyQt6.QtCore import QLocale, QTimer
+from PyQt6.QtCore import QObject, QLocale, pyqtSignal, QTimer
 from PyQt6.QtWidgets import QApplication
-
 from .locale import get_available_languages
 
 
-class Translator:
-    """Centralized translation manager using JSON-based translations."""
-    
-    AVAILABLE_LANGUAGES = {
-        "ru": {"name": "Русский", "code": "ru"},
-        "en": {"name": "English", "code": "en"},
-    }
-    
+class Translator(QObject):
     _instance = None
-    
-    def __init__(self, app: QApplication = None):
-        self.app = app or QApplication.instance()
-        self.current_locale = QLocale.system()
-        self.translations: dict[str, dict[str, str]] = {}
+    _signal = pyqtSignal(str)
+
+    def __init__(self):
+        super().__init__()
         self._current_lang = "ru"
-        self._load_translations()
-    
+        self.translations = {}
+        self.current_locale = None
+        self.AVAILABLE_LANGUAGES = get_available_languages()
+
     @classmethod
-    def get_instance(cls, app: QApplication = None) -> "Translator":
-        """Get singleton instance."""
+    def get_instance(cls) -> "Translator":
         if cls._instance is None:
-            cls._instance = cls(app)
+            cls._instance = cls()
         return cls._instance
-    
-    def _get_resource_path(self) -> Path:
-        """Get path to translation files."""
-        if getattr(sys, 'frozen', False):
-            return Path(sys._MEIPASS) / "translations"
-        else:
-            return Path(__file__).parent.parent.parent / "translations"
-    
-    def _load_translations(self):
-        """Load all .qm files (JSON format)."""
-        resource_path = self._get_resource_path()
-        
-        for lang_code in self.AVAILABLE_LANGUAGES:
-            qm_file = resource_path / f"{lang_code}.qm"
-            
-            if qm_file.exists():
-                try:
-                    with open(qm_file, 'r', encoding='utf-8') as f:
-                        data = json.load(f)
-                        self.translations[lang_code] = data.get("translations", {})
-                except Exception as e:
-                    print(f"Error loading {lang_code}.qm: {e}")
-    
-    def get_current_language(self) -> str:
-        """Get current language code."""
-        return self._current_lang
-    
+
     def set_language(self, lang_code: str) -> bool:
         """Switch language instantly."""
         if lang_code not in self.AVAILABLE_LANGUAGES:
             return False
         
+        # Загружаем переводы если ещё не загружены
+        if lang_code not in self.translations:
+            self._load_locale(lang_code)
+        
+        # Проверяем что загрузились успешно
         if lang_code in self.translations:
             self._current_lang = lang_code
-            self.current_locale = QLocale(lang_code)
+            self.current_locale = self.translations[lang_code]
+            self._signal.emit(lang_code)
             return True
         
         return False
     
+    def _load_locale(self, lang_code: str) -> dict:
+        """Load translations from .qm (JSON) file."""
+        if getattr(sys, 'frozen', False):
+            # PyInstaller onefile извлекает ресурсы в sys._MEIPASS
+            resource_path = Path(sys._MEIPASS) / "translations"
+        else:
+            resource_path = Path(__file__).parent.parent.parent / "translations"
+        
+        qm_file = resource_path / f"{lang_code}.qm"
+        print(f"Loading translations from: {qm_file}")
+        
+        if not qm_file.exists():
+            print(f"Translation file not found: {qm_file}")
+            return {}
+        
+        try:
+            with open(qm_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                self.translations[lang_code] = data.get("translations", {})
+                print(f"Loaded {len(self.translations[lang_code])} translations for {lang_code}")
+                return self.translations[lang_code]
+        except Exception as e:
+            print(f"Error loading {qm_file}: {e}")
+            return {}
+    
     def switch_language(self, lang_code: str):
         """Thread-safe language switch via main thread."""
-        if self.app:
+        if hasattr(self, 'app') and self.app:
             QTimer.singleShot(0, lambda: self._switch_safe(lang_code))
         else:
             self.set_language(lang_code)

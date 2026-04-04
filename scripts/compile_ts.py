@@ -4,7 +4,6 @@
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from PyQt6.QtCore import QTranslator, QLocale
 
 def parse_ts_file(ts_path: Path) -> dict[str, str]:
     """Parse .ts file and extract translations."""
@@ -22,7 +21,14 @@ def parse_ts_file(ts_path: Path) -> dict[str, str]:
                 if source is not None and translation is not None:
                     source_text = source.text or ""
                     trans_text = translation.text or source_text
-                    translations[source_text] = trans_text
+                    
+                    # Конвертируем литеральные escape-последовательности в реальные символы
+                    # \n (2 символа: \ + n) → символ новой строки (0x0A)
+                    source_text = source_text.replace("\\n", "\n").replace("\\t", "\t").replace("\\r", "\r")
+                    trans_text = trans_text.replace("\\n", "\n").replace("\\t", "\t").replace("\\r", "\r")
+                    
+                    if source_text:
+                        translations[source_text] = trans_text
     except Exception as e:
         print(f"Error parsing {ts_path}: {e}")
     

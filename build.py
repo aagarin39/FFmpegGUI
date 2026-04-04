@@ -49,8 +49,6 @@ a = Analysis(
         'PyQt6.QtCore',
         'PyQt6.QtWidgets',
         'PyQt6.QtGui',
-        'pydantic',
-        'pydantic_core',
         'src.core.ffmpeg',
         'src.core.presets',
         'src.core.ffmpeg_installer',

@@ -144,7 +144,12 @@
         <translation>🔄 New Version Available</translation>
     </message>
     <message>
-        <location filename="src/main_pyqt.py" line="1029"/>
+        <location filename="src/uninstall.py" line="125"/>
+        <source>Удалить</source>
+        <translation>Uninstall</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="111"/>
         <source>Отмена</source>
         <translation>Cancel</translation>
     </message>
@@ -749,6 +754,294 @@ Update recommended for bug fixes and improvements.</translation>
         <location filename="src/core/presets.py" line="235"/>
         <source>preset.hevc_cpu_light.description</source>
         <translation>libx265, 1920x, CRF 22, faster</translation>
+    </message>
+</context>
+<context>
+    <name>HelpTexts</name>
+    <message>
+        <location filename="src/main_pyqt.py" line="271"/>
+        <source>Краткое описание</source>
+        <translation>Brief description</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="159"/>
+        <source>help.name</source>
+        <translation>Unique preset name (e.g. For Phone, YouTube 1080p)</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="160"/>
+        <source>help.desc</source>
+        <translation>Brief description of the preset purpose</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="161"/>
+        <source>help.hw</source>
+        <translation>Hardware acceleration for fast encoding. nvenc — NVIDIA, qsv — Intel, amf — AMD, cpu — CPU</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="162"/>
+        <source>help.codec</source>
+        <translation>H.264 — maximum device compatibility, H.265 — better compression and smaller file size</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="163"/>
+        <source>help.cq</source>
+        <translation>Video quality from 1 to 51. Lower — higher quality, larger file. Recommended 18-22</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="164"/>
+        <source>help.scale</source>
+        <translation>Video resolution. Full HD — for TV, HD — for web, 4K — for modern TVs, None — keep original</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="165"/>
+        <source>help.audio</source>
+        <translation>Audio channels count. Stereo — headphones and phones, 5.1 — home theater, 7.1 — professional</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="166"/>
+        <source>help.container</source>
+        <translation>MKV — universal format, supports everything. MP4 — maximum device compatibility</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="167"/>
+        <source>help.subs</source>
+        <translation>Remove subtitles from video during conversion</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1180"/>
+        <source>🔄 Доступна версия {version} (у вас {current})</source>
+        <translation>🔄 Available version {version} (you have {current})</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1243"/>
+        <source>✓ FFmpeg {version}</source>
+        <translation>✓ FFmpeg {version}</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1245"/>
+        <source>📁 Открыть папку</source>
+        <translation>📁 Open Folder</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1246"/>
+        <source>🗑️ Удалить FFmpeg</source>
+        <translation>🗑️ Remove FFmpeg</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1250"/>
+        <source>❌ Удалить программу</source>
+        <translation>❌ Uninstall Program</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1262"/>
+        <source>✓ Ярлык удаления удалён</source>
+        <translation>✓ Uninstall shortcut removed</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1264"/>
+        <source>⚠️ Не удалось удалить ярлык: {error}</source>
+        <translation>⚠️ Failed to remove shortcut: {error}</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1268"/>
+        <source>✓ FFmpeg удалён</source>
+        <translation>✓ FFmpeg removed</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1300"/>
+        <source>Обновление FFmpeg</source>
+        <translation>FFmpeg Update</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1413"/>
+        <source>✓ FFmpeg установлен: {version}</source>
+        <translation>✓ FFmpeg installed: {version}</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1431"/>
+        <source>✗ Ошибка после установки: {error}</source>
+        <translation>✗ Error after installation: {error}</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1510"/>
+        <source>✓ Ярлык удаления создан на рабочем столе</source>
+        <translation>✓ Uninstall shortcut created on Desktop</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="96"/>
+        <source>⚠️ Конвертация отменена пользователем</source>
+        <translation>⚠️ Conversion cancelled by user</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="100"/>
+        <source>▶ {name}</source>
+        <translation>▶ {name}</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="116"/>
+        <source>🗑️ Удалён пустой файл: {name}</source>
+        <translation>🗑️ Deleted empty file: {name}</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="118"/>
+        <source>⚠️ Не удалось удалить пустой файл: {error}</source>
+        <translation>⚠️ Failed to delete empty file: {error}</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="125"/>
+        <source>✗ {name}: Файл пустой (кодек не доступен)</source>
+        <translation>✗ {name}: File is empty (codec not available)</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="128"/>
+        <source>✓ {name}</source>
+        <translation>✓ {name}</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="133"/>
+        <source>✗ {name}</source>
+        <translation>✗ {name}</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="136"/>
+        <source>✗ {name}: {error}</source>
+        <translation>✗ {name}: {error}</translation>
+    </message>
+    <message>
+        <location filename="src/main_pyqt.py" line="1001"/>
+        <source>Файлов: 0/0</source>
+        <translation>Files: 0/0</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="24"/>
+        <source>Удаление FFmpeg Converter</source>
+        <translation>Uninstall FFmpeg Converter</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="45"/>
+        <source>🗑️ Удаление FFmpeg Converter</source>
+        <translation>🗑️ Uninstall FFmpeg Converter</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="50"/>
+        <source>Выберите компоненты для удаления.\nЭто действие необратимо!</source>
+        <translation>Select components to uninstall.\nThis action cannot be undone!</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="58"/>
+        <source>Компоненты</source>
+        <translation>Components</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="62"/>
+        <source>Программа (FFmpegConverter.exe)</source>
+        <translation>Program (FFmpegConverter.exe)</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="69"/>
+        <source>FFmpeg (~/FFmpegGUI/ffmpeg/)</source>
+        <translation>FFmpeg (~/FFmpegGUI/ffmpeg/)</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="75"/>
+        <source>Настройки и пресеты (~/FFmpegGUI/app/)</source>
+        <translation>Settings and presets (~/FFmpegGUI/app/)</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="80"/>
+        <source>Логи установки (~/FFmpegGUI/logs/)</source>
+        <translation>Installation logs (~/FFmpegGUI/logs/)</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="91"/>
+        <source>⚠️  Удалённые компоненты не смогут быть восстановлены!</source>
+        <translation>⚠️  Uninstalled components cannot be restored!</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="135"/>
+        <source>FFmpeg (~/FFmpegGUI/ffmpeg/) — установлен</source>
+        <translation>FFmpeg (~/FFmpegGUI/ffmpeg/) — installed</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="138"/>
+        <source>FFmpeg — не установлен</source>
+        <translation>FFmpeg — not installed</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="145"/>
+        <source>Настройки и пресеты ({count} файлов)</source>
+        <translation>Settings and presets ({count} files)</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="153"/>
+        <source>Логи установки ({count} файлов)</source>
+        <translation>Installation logs ({count} files)</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="162"/>
+        <source>Подтверждение удаления</source>
+        <translation>Confirm Uninstall</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="163"/>
+        <source>Вы уверены что хотите удалить выбранные компоненты?\n\nЭто действие необратимо!</source>
+        <translation>Are you sure you want to uninstall selected components?\n\nThis action cannot be undone!</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="183"/>
+        <source>✓ FFmpeg удалён</source>
+        <translation>✓ FFmpeg removed</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="185"/>
+        <source>✗ Ошибка удаления FFmpeg: {error}</source>
+        <translation>✗ Error removing FFmpeg: {error}</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="191"/>
+        <source>✓ Настройки удалены</source>
+        <translation>✓ Settings removed</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="193"/>
+        <source>✗ Ошибка удаления настроек: {error}</source>
+        <translation>✗ Error removing settings: {error}</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="199"/>
+        <source>✓ Логи удалены</source>
+        <translation>✓ Logs removed</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="201"/>
+        <source>✗ Ошибка удаления логов: {error}</source>
+        <translation>✗ Error removing logs: {error}</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="215"/>
+        <source>✓ Программа удалена</source>
+        <translation>✓ Program removed</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="217"/>
+        <source>⚠️ Программа будет удалена после перезапуска: {error}</source>
+        <translation>⚠️ Program will be removed after restart: {error}</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="219"/>
+        <source>ℹ️ Запуск из разработки — программа не удаляется</source>
+        <translation>ℹ️ Running from development — program not removed</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="225"/>
+        <source>Удаление завершено</source>
+        <translation>Uninstall Complete</translation>
+    </message>
+    <message>
+        <location filename="src/uninstall.py" line="226"/>
+        <source>Результат удаления:\n\n{result}</source>
+        <translation>Uninstall result:\n\n{result}</translation>
     </message>
 </context>
 </TS>
