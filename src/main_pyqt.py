@@ -7,6 +7,7 @@ import os
 import shutil
 import tempfile
 import datetime
+import platform
 from pathlib import Path
 
 from PyQt6.QtWidgets import (
@@ -35,6 +36,17 @@ def get_resource_path(relative_path: str) -> str:
     else:
         base_path = Path(__file__).parent
     return str(base_path / relative_path)
+
+
+def get_window_icon_path() -> str:
+    """Получить путь к иконке окна для текущей платформы."""
+    system = platform.system()
+    if system == 'Darwin':
+        return get_resource_path("assets/icons/icon.icns")
+    elif system == 'Windows':
+        return get_resource_path("assets/icons/icon.ico")
+    else:
+        return get_resource_path("assets/icons/icon.png")
 
 
 # Импорт модулей проекта
@@ -698,7 +710,7 @@ class MainWindow(QMainWindow):
         self.current_language = detected_lang
         
         self.setWindowTitle(self.tr("FFmpeg Converter"))
-        self.setWindowIcon(QIcon(get_resource_path("assets/icons/icon.ico")))
+        self.setWindowIcon(QIcon(get_window_icon_path()))
         self.resize(1100, 750)
         self.setMinimumSize(850, 600)
         

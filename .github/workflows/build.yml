@@ -1,0 +1,106 @@
+name: Build
+
+on:
+  push:
+    branches: [develop, main-FFmpegGUI]
+  pull_request:
+    branches: [develop, main-FFmpegGUI]
+  release:
+    types: [created]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-22.04, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run tests
+        run: pytest -v
+
+  build:
+    name: Build (${{ matrix.os }})
+    needs: test
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-22.04, macos-14]
+        include:
+          - os: windows-latest
+            artifact_name: FFmpegConverter.exe
+            artifact_output: FFmpegGUI-Windows
+          - os: ubuntu-22.04
+            artifact_name: FFmpegConverter
+            artifact_output: FFmpegGUI-Linux
+          - os: macos-14
+            artifact_name: FFmpegConverter.app
+            artifact_output: FFmpegGUI-macOS
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build application
+        run: python build.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_output }}
+          path: dist/${{ matrix.artifact_name }}
+          retention-days: 30
+
+  release:
+    name: Create Release
+    needs: build
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release
+          cp artifacts/FFmpegGUI-Windows/FFmpegConverter.exe release/FFmpegConverter-Windows.exe
+          cp artifacts/FFmpegGUI-Linux/FFmpegConverter release/FFmpegConverter-Linux
+          cd artifacts/FFmpegGUI-macOS
+          zip -r ../../release/FFmpegConverter-macOS.app.zip FFmpegConverter.app
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/FFmpegConverter-Windows.exe
+            release/FFmpegConverter-Linux
+            release/FFmpegConverter-macOS.app.zip
