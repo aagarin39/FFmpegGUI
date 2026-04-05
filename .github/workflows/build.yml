@@ -101,8 +101,7 @@ jobs:
           mkdir -p release
           cp artifacts/FFmpegGUI-Windows/FFmpegConverter.exe release/FFmpegConverter-Windows.exe
           cp artifacts/FFmpegGUI-Linux/FFmpegConverter release/FFmpegConverter-Linux
-          cd artifacts/FFmpegGUI-macOS
-          zip -r ../../release/FFmpegConverter-macOS.app.zip FFmpegConverter.app
+          (cd artifacts/FFmpegGUI-macOS && zip -r ../../release/FFmpegConverter-macOS.app.zip FFmpegConverter.app)
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
